@@ -92,8 +92,6 @@ namespace PS4PKGTool
         public Main()
         {
             InitializeComponent();
-            this.tabPage6.Hide();
-            flatTabControl1.TabPages.Remove(tabPage6);
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; CheckForIllegalCrossThreadCalls = false;
@@ -115,6 +113,9 @@ namespace PS4PKGTool
             this.DragOver += (s, ev) => { if (ev.Data.GetDataPresent(DataFormats.FileDrop)) ev.Effect = DragDropEffects.Copy; };
             this.DragDrop += PKGGridView_DragDrop;
             WireAllControls(this);
+
+            // Suppress DataGridView DataError dialogs (occurs during rapid DataSource changes)
+            PKGGridView.DataError += (_, args) => { args.Cancel = true; }; // suppress column mismatch errors during DataSource changes
 
             ApplicationVersion = GetApplicationVersion();
 
@@ -186,19 +187,26 @@ namespace PS4PKGTool
 
         private void PKGListGridView_SelectionChanged(object sender, EventArgs e)
         {
-            BGM.isBGMPlaying = false;
-            BGM.At9Player.Stop();
-
-            PKG.SelectedPKGFilename = "";
-
-            if (PKGGridView.SelectedCells.Count > 0)
+            try
             {
-                GetSelectedPKGPath();
+                BGM.isBGMPlaying = false;
+                BGM.At9Player.Stop();
 
-                if (PKG.isDeletingPkg)
-                    SelectFirstRowPkg();
+                PKG.SelectedPKGFilename = "";
 
-                LoadPKGDetails();
+                if (PKGGridView.SelectedCells.Count > 0)
+                {
+                    GetSelectedPKGPath();
+
+                    if (PKG.isDeletingPkg)
+                        SelectFirstRowPkg();
+
+                    LoadPKGDetails();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error on selection change: {ex.Message}");
             }
         }
 
@@ -998,32 +1006,42 @@ namespace PS4PKGTool
         /// <returns></returns>
         private List<string> GetSelectedPKGDirectoryList(string selectionType, bool sortAddon = false)
         {
-            List<string> list = new List<string>();
-
-            IEnumerable<DataGridViewRow> rowsToProcess = null;
-
-            if (selectionType == PKGSelectionType.SELECTED)
+            var list = new List<string>();
+            try
             {
-                rowsToProcess = PKGGridView.SelectedRows.Cast<DataGridViewRow>();
-            }
-            else if (selectionType == PKGSelectionType.ALL)
-            {
-                rowsToProcess = PKGGridView.Rows.Cast<DataGridViewRow>();
-            }
+                IEnumerable<DataGridViewRow> rowsToProcess = null;
 
-            if (sortAddon)
-            {
-                rowsToProcess = rowsToProcess.OrderByDescending(row => row.Cells[8].Value); // Sort by column index 7
-            }
+                if (selectionType == PKGSelectionType.SELECTED)
+                {
+                    if (PKGGridView.SelectedRows.Count == 0) return list;
+                    rowsToProcess = PKGGridView.SelectedRows.Cast<DataGridViewRow>();
+                }
+                else if (selectionType == PKGSelectionType.ALL)
+                {
+                    if (PKGGridView.Rows.Count == 0) return list;
+                    rowsToProcess = PKGGridView.Rows.Cast<DataGridViewRow>();
+                }
 
-            foreach (DataGridViewRow row in rowsToProcess)
-            {
-                string filename = row.Cells[0].Value.ToString();
-                string path = row.Cells[13].Value.ToString();
-                string pkgPath = Path.Combine(path, filename);
-                list.Add(pkgPath);
-            }
+                if (rowsToProcess == null) return list;
 
+                if (sortAddon)
+                {
+                    rowsToProcess = rowsToProcess.OrderByDescending(row => row.Cells[8].Value);
+                }
+
+                foreach (DataGridViewRow row in rowsToProcess)
+                {
+                    if (row.Cells[0].Value == null || row.Cells[13].Value == null) continue;
+                    string filename = row.Cells[0].Value.ToString();
+                    string path = row.Cells[13].Value.ToString();
+                    string pkgPath = Path.Combine(path, filename);
+                    list.Add(pkgPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error getting PKG list: {ex.Message}");
+            }
             return list;
         }
 
@@ -1606,243 +1624,6 @@ namespace PS4PKGTool
             }
         }
 
-        private void LoadPKGListView()
-        {
-            PKGListView.Columns.Add("Filename");
-            PKGListView.Columns.Add("Title ID");
-            PKGListView.Columns.Add("Content ID");
-            PKGListView.Columns.Add("Region");
-            PKGListView.Columns.Add("System Version");
-            PKGListView.Columns.Add("Version [App Version]");
-            PKGListView.Columns.Add("PKG Type");
-            PKGListView.Columns.Add("Category");
-            PKGListView.Columns.Add("Size");
-            PKGListView.Columns.Add("PSVR");
-            PKGListView.Columns.Add("PS4 Pro Enhanced");
-            PKGListView.Columns.Add("PS5 BC");
-            PKGListView.Columns.Add("Directory");
-            PKGListView.Columns.Add("Backported");
-
-            autoResizeColumns(PKGListView);
-
-            this.Invoke((MethodInvoker)delegate
-            {
-                PKG.SelectedPKGFilename = null;
-                pictureBox1.Image = null;
-                darkLabel1.Text = "";
-            });
-
-            PKG.VerifiedPs4PkgList.Clear();
-            PKG.EntryIdList.Clear();
-            PKG.EntryNameList.Clear();
-            //PKG.totalPkg = 0;
-            PKG.pkgCount = 0;
-            PKG.game = 0;
-            PKG.patch = 0;
-            PKG.app = 0;
-            PKG.unknown = 0;
-            PKG.addon = 0;
-            toolStripProgressBar1.Value = 0;
-
-            List<string> PkgFileList = new List<string>();
-            var PkgDirectoryList = appSettings_.PkgDirectories;
-            foreach (var directory in PkgDirectoryList)
-            {
-                var searchOption = appSettings_.ScanRecursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-
-                try
-                {
-                    var allDirectories = Directory.GetDirectories(directory, "*", SearchOption.TopDirectoryOnly);
-
-                    var directoriesToScan = new List<string> { directory };
-                    directoriesToScan.AddRange(allDirectories.Where(dir => !ExcludedDirectoryList.Contains(Path.GetFileName(dir))));
-
-                    foreach (var directory_ in directoriesToScan)
-                    {
-                        this.Invoke((MethodInvoker)delegate
-                        {
-                            toolStripStatusLabel2.Text = "Scanning directory.. " + "(" + directory_ + ") ";
-                        });
-
-                        try
-                        {
-                            var pkgFiles = Directory.GetFiles(directory_, "*.PKG", searchOption);
-                            if (pkgFiles.Length > 0)
-                                PkgFileList.AddRange(pkgFiles);
-                        }
-                        catch (UnauthorizedAccessException e)
-                        {
-                            Logger.LogError(e.Message);
-                        }
-                    }
-                }
-                catch (UnauthorizedAccessException e)
-                {
-                    Logger.LogError(e.Message);
-                }
-            }
-
-            PkgFileList = PkgFileList.Distinct().ToList();
-
-            // verify scanned ps4 pkg and count it
-            foreach (var item in PkgFileList)
-            {
-                //filter ps4 pkg by checking magic byte
-                byte[] bufferA = new byte[16];
-
-                bufferA = PKG.GetPkgHeaderBuffer(item);
-                if (PKG.CompareBytes(bufferA, PKG.PkgHeader) || PKG.CompareBytes(bufferA, PKG.PkgHeader1) ||
-                    PKG.CompareBytes(bufferA, PKG.PkgHeader2) || PKG.CompareBytes(bufferA, PKG.PkgHeader3) ||
-                    PKG.CompareBytes(bufferA, PKG.PkgHeader4))
-                {
-                    PKG.VerifiedPs4PkgList.Add(item);
-                    //PKG.totalPkg++;
-                }
-            }
-
-            this.Invoke((MethodInvoker)delegate
-            {
-                toolStripProgressBar1.Visible = true;
-                //toolStripProgressBar1.Maximum = PKG.totalPkg;
-                toolStripProgressBar1.Maximum = PKG.VerifiedPs4PkgList.Count;
-            });
-
-            Dictionary<string, ListViewGroup> groupDictionary = new Dictionary<string, ListViewGroup>();
-
-            foreach (var pkg in PKG.VerifiedPs4PkgList)
-            {
-                PS4_Tools.PKG.SceneRelated.Unprotected_PKG ps4Pkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
-                Param_SFO.PARAM_SFO psfo = ps4Pkg.Param;
-
-                string pkgVersion = "";
-                string pkgAppVersion = psfo.APP_VER;
-                string pkgTitleId = ps4Pkg.Param.TITLEID;
-                string pkgFileName = Path.GetFileName(pkg);
-                string pkgDirectoryName = Path.GetDirectoryName(pkg);
-                string psVr = "";
-                string neoEnable = "";
-                string ps5bc = "";
-                string pkgSystemVersion = "";
-                byte[] pkgRegionIcon = null;
-                string pkgState = ps4Pkg.PKGState.ToString();
-                string pkgType = ps4Pkg.PKG_Type.ToString();
-                string pkgSize;
-                string pkgIsBackported = "";
-
-                // remove leading zero on app_ver
-                string pattern = @"^0+(?=\d+\.)";
-                pkgAppVersion = Regex.Replace(pkgAppVersion, pattern, "");
-
-                // get pkg's minimum system fw
-                foreach (Param_SFO.PARAM_SFO.Table t in ps4Pkg.Param.Tables.ToList())
-                {
-                    if (t.Name == "SYSTEM_VER")
-                    {
-                        int value = Convert.ToInt32(t.Value);
-                        string hexOutput = String.Format("{0:X}", value);
-                        if (t.Value != "0")
-                        {
-                            string first_three = hexOutput.Substring(0, 3);
-                            pkgSystemVersion = first_three.Insert(1, ".");
-                        }
-                        else // SYSTEM_VER = 0 (HB Store.pkg)
-                            pkgSystemVersion = t.Value;
-                    }
-                    if (t.Name == "VERSION")
-                    {
-                        // remove leading zero on app_ver
-                        pkgVersion = t.Value;
-                        pkgVersion = Regex.Replace(pkgVersion, pattern, "");
-                    }
-                }
-
-                // get latest official update version and minimum firmware
-                //string updateVersion;
-                //string updateMinFirmware;
-                //(updateVersion, updateMinFirmware)= PS4_Tools.PKG.Official.CheckLatestUpdateVersionAndMinFirmware(ps4Pkg.Param.TITLEID);
-
-
-                // get pkg full size
-                long fileSizeBytes = new System.IO.FileInfo(pkg).Length;
-                pkgSize = ByteSize.FromBytes(fileSizeBytes).ToString();
-
-                // backward compatible info
-                if (appSettings_.psvr_neo_ps5bc_check && File.Exists(Ps5BcJsonFile))
-                {
-                    dynamic ps5BcJsonData = JsonConvert.DeserializeObject(File.ReadAllText(Ps5BcJsonFile));
-
-                    if (pkgType == PKGCategory.GAME)
-                    {
-                        foreach (var item_ in ps5BcJsonData)
-                        {
-                            if (item_.npTitleIdshort == ps4Pkg.Param.TITLEID)
-                            {
-                                string titleID = item_.npTitleIdshort;
-                                string psvr = item_.psVr;
-                                string neo = item_.neoEnable;
-                                string ps5bc_ = item_.ps5bc;
-
-                                // ps4vr
-                                psVr = (psvr == "1" || psvr == "2") ? "Yes" : (psvr == "0") ? "No" : (psvr != "null") ? "NA" : "";
-
-                                // ps4 pro enhanced
-                                neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (psvr != "null") ? "NA" : "";
-
-                                // ps5bc
-                                ps5bc = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(ps5bc_.Replace("_", " ").ToLower());
-                            }
-                        }
-                    }
-                    else
-                    {
-                        psVr = neoEnable = ps5bc = "-";
-                    }
-                }
-                else
-                {
-                    psVr = neoEnable = ps5bc = "";
-                }
-
-                // get region from content id
-                var imageConverter = new ImageConverter();
-                var region = ps4Pkg.Region;
-                if (region == PKGRegion.EU) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.eu, typeof(byte[])); }
-                else if (region == PKGRegion.US) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.us, typeof(byte[])); }
-                else if (region == PKGRegion.UK) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.us, typeof(byte[])); }
-                else if (region == PKGRegion.JAPAN) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.jp, typeof(byte[])); }
-                else if (region == PKGRegion.HONG_KONG) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.hk, typeof(byte[])); }
-                else if (region == PKGRegion.ASIA) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.asia, typeof(byte[])); }
-                else if (region == PKGRegion.KOREA) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.kr, typeof(byte[])); }
-
-                // check if pkg is backported
-                pkgIsBackported = File.Exists(Backport.BackportInfoFile) ? Backport.CheckPKGBackported(pkg) ?? "No" : "No";
-
-                // Create a ListViewItem to hold the package information.
-                ListViewItem item = new ListViewItem(new string[]
-                {
-            pkgFileName, pkgTitleId, ps4Pkg.Param.ContentID, pkgRegionIcon.ToString(), pkgSystemVersion,
-            pkgVersion + $" [{pkgAppVersion}]", pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc, pkgDirectoryName, pkgIsBackported
-                });
-
-                // Create or retrieve a group based on the package title.
-                string groupName = pkgTitleId;
-                ListViewGroup group;
-
-                if (!groupDictionary.TryGetValue(groupName, out group))
-                {
-                    group = new ListViewGroup(groupName);
-                    groupDictionary[groupName] = group;
-                    PKGListView.Groups.Add(group);
-                }
-
-                item.Group = group;
-
-                // Add the ListViewItem to the ListView.
-                PKGListView.Items.Add(item);
-            }
-
-            this.Enabled = true;
-        }
 
         private void PKGGridView_DragEnter(object sender, DragEventArgs e)
         {
@@ -5074,16 +4855,18 @@ namespace PS4PKGTool
 
         private void ApplyGroupFilter()
         {
-            if (groupedListView == null) return;
-            var dt = PKGGridView.DataSource as DataTable;
-            if (dt == null) return;
-
-            string filter = tbGroupFilter.Text.Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(filter))
+            try
             {
-                PopulateGroupedView();
-                return;
-            }
+                if (groupedListView == null) return;
+                var dt = PKGGridView.DataSource as DataTable;
+                if (dt == null) return;
+
+                string filter = tbGroupFilter.Text.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(filter))
+                {
+                    PopulateGroupedView();
+                    return;
+                }
 
             var filtered = dt.Rows.Cast<DataRow>()
                 .Where(r => (r["Filename"]?.ToString() ?? "").ToLowerInvariant().Contains(filter)
@@ -5122,14 +4905,30 @@ namespace PS4PKGTool
                 }
             );
             groupedListView.ExpandAll();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error applying group filter: {ex.Message}");
+                ShowError($"Error applying group filter: {ex.Message}", true);
+            }
         }
 
         private void darkButton3_Click(object sender, EventArgs e)
         {
-            if (tbSearchGame.Text == string.Empty)
-                return;
-            (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Filename] LIKE '%{0}%' OR [Title] LIKE '%{0}%' OR [Title ID] LIKE '%{0}%' OR [Content ID] LIKE '%{0}%'", "");
-            tbSearchGame.Text = string.Empty;
+            try
+            {
+                if (tbSearchGame.Text == string.Empty)
+                    return;
+                var dt = PKGGridView.DataSource as DataTable;
+                if (dt != null)
+                    dt.DefaultView.RowFilter = string.Empty;
+                tbSearchGame.Text = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error clearing filter: {ex.Message}");
+                ShowError($"Error clearing filter: {ex.Message}", true);
+            }
         }
 
         private void toolStripMenuItem32_Click(object sender, EventArgs e)
@@ -5571,22 +5370,41 @@ namespace PS4PKGTool
 
         private void GetSelectedPKGPath()
         {
-            foreach (DataGridViewCell cell in PKGGridView.SelectedCells)
+            try
             {
-                int selectedRowIndex = cell.RowIndex;
-                DataGridViewRow selectedRow = PKGGridView.Rows[selectedRowIndex];
-                PKG.SelectedPKGFilename = $"{selectedRow.Cells[13].Value}\\{selectedRow.Cells[0].Value}";
+                foreach (DataGridViewCell cell in PKGGridView.SelectedCells)
+                {
+                    int selectedRowIndex = cell.RowIndex;
+                    if (selectedRowIndex < 0 || selectedRowIndex >= PKGGridView.Rows.Count) continue;
+                    DataGridViewRow selectedRow = PKGGridView.Rows[selectedRowIndex];
+                    if (selectedRow.Cells[0].Value == null || selectedRow.Cells[13].Value == null) continue;
+                    PKG.SelectedPKGFilename = $"{selectedRow.Cells[13].Value}\\{selectedRow.Cells[0].Value}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error getting PKG path: {ex.Message}");
             }
         }
 
         private void SelectFirstRowPkg()
         {
-            if (PKGGridView.Rows.Count > 0)
+            try
             {
-                DataGridViewRow firstRow = PKGGridView.Rows[0];
-                string valueColumn0 = firstRow.Cells[0].Value?.ToString();
-                string valueColumn12 = firstRow.Cells[13].Value?.ToString();
-                PKG.SelectedPKGFilename = Path.Combine(valueColumn12, valueColumn0);
+                if (PKGGridView.Rows.Count > 0)
+                {
+                    DataGridViewRow firstRow = PKGGridView.Rows[0];
+                    if (firstRow.Cells[0].Value != null && firstRow.Cells[13].Value != null)
+                    {
+                        string valueColumn0 = firstRow.Cells[0].Value.ToString();
+                        string valueColumn12 = firstRow.Cells[13].Value.ToString();
+                        PKG.SelectedPKGFilename = Path.Combine(valueColumn12, valueColumn0);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error selecting first row: {ex.Message}");
             }
         }
 
@@ -5899,49 +5717,48 @@ namespace PS4PKGTool
 
         private void PKGListGridView_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (PKGGridView.DataSource is not DataTable dataTable) return;
-            if (e.ColumnIndex < 0 || e.ColumnIndex >= PKGGridView.Columns.Count) return;
-
-            string colName = PKGGridView.Columns[e.ColumnIndex].Name;
-            if (string.IsNullOrEmpty(colName)) return;
-
-            // Region column (byte[]) needs special handling
-            if (colName == "Region")
+            try
             {
-                PKGGridView.Columns[e.ColumnIndex].SortMode = DataGridViewColumnSortMode.Automatic;
-                return;
-            }
+                if (PKGGridView.DataSource is not DataTable dataTable) return;
+                if (e.ColumnIndex < 0 || e.ColumnIndex >= PKGGridView.Columns.Count) return;
 
-            // Size column needs custom sort — "1.23 GB" string can't sort alphabetically
-            if (colName == "Size")
-            {
-                string dir = "ASC";
+                string colName = PKGGridView.Columns[e.ColumnIndex].Name;
+                if (string.IsNullOrEmpty(colName)) return;
+
+                // Region column (byte[]) needs special handling
+                if (colName == "Region")
+                {
+                    PKGGridView.Columns[e.ColumnIndex].SortMode = DataGridViewColumnSortMode.Automatic;
+                    return;
+                }
+
+                // Size column — alphabetical sort on the string value
+                if (colName == "Size")
+                {
+                    string dir = "ASC";
+                    if (PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection == SortOrder.Ascending)
+                        dir = "DESC";
+                    dataTable.DefaultView.Sort = $"{colName} {dir}";
+                    PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection =
+                        dir == "ASC" ? SortOrder.Ascending : SortOrder.Descending;
+                    return;
+                }
+
+                // All other columns: toggle ascending/descending via DataView
+                string direction = "ASC";
                 if (PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection == SortOrder.Ascending)
-                    dir = "DESC";
+                    direction = "DESC";
 
-                string filter = dataTable.DefaultView.RowFilter;
-                var sortedRows = dir == "ASC"
-                    ? dataTable.AsEnumerable().OrderBy(r => ParseSizeToBytes(r.Field<string>("Size")))
-                    : dataTable.AsEnumerable().OrderByDescending(r => ParseSizeToBytes(r.Field<string>("Size")));
-                var sorted = sortedRows.Any() ? sortedRows.CopyToDataTable() : dataTable.Clone();
+                dataTable.DefaultView.Sort = $"{colName} {direction}";
 
-                PKGGridView.DataSource = sorted;
-                if (!string.IsNullOrEmpty(filter))
-                    sorted.DefaultView.RowFilter = filter;
                 PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection =
-                    dir == "ASC" ? SortOrder.Ascending : SortOrder.Descending;
-                return;
+                    direction == "ASC" ? SortOrder.Ascending : SortOrder.Descending;
             }
-
-            // All other columns: toggle ascending/descending via DataView
-            string direction = "ASC";
-            if (PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection == SortOrder.Ascending)
-                direction = "DESC";
-
-            dataTable.DefaultView.Sort = $"{colName} {direction}";
-
-            PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection =
-                direction == "ASC" ? SortOrder.Ascending : SortOrder.Descending;
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error sorting column: {ex.Message}");
+                ShowError($"Error sorting column: {ex.Message}", true);
+            }
         }
 
         private static long ParseSizeToBytes(string sizeStr)
@@ -6090,7 +5907,20 @@ namespace PS4PKGTool
 
         private void TbSearchGame_TextChanged(object sender, EventArgs e)
         {
-            (PKGGridView.DataSource as DataTable).DefaultView.RowFilter = string.Format("[Filename] LIKE '%{0}%' OR [Title] LIKE '%{0}%' OR [Title ID] LIKE '%{0}%' OR [Content ID] LIKE '%{0}%'", tbSearchGame.Text);
+            try
+            {
+                var dt = PKGGridView.DataSource as DataTable;
+                if (dt == null) return;
+                string text = tbSearchGame.Text.Replace("'", "''"); // escape single quotes for LIKE
+                dt.DefaultView.RowFilter = string.IsNullOrEmpty(text)
+                    ? string.Empty
+                    : $"[Filename] LIKE '%{text}%' OR [Title] LIKE '%{text}%' OR [Title ID] LIKE '%{text}%' OR [Content ID] LIKE '%{text}%'";
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error applying filter: {ex.Message}");
+                ShowError($"Error applying filter: {ex.Message}", true);
+            }
         }
 
         private static int IconFor(string path)
@@ -6395,44 +6225,6 @@ namespace PS4PKGTool
             //tbLog.ScrollToCaret();
         }
 
-        private void colorTestToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            // Iterate through the DataGridView rows
-            foreach (DataGridViewRow row in PKGGridView.Rows)
-            {
-                // Check if the row is not a header and has valid data
-                if (!row.IsNewRow && row.Cells["Title ID"].Value != null && row.Cells["Category"].Value != null)
-                {
-                    string titleId = row.Cells["Title ID"].Value.ToString();
-                    string category = row.Cells["Category"].Value.ToString();
-                    string fileName = row.Cells["Filename"].Value.ToString();
-
-                    // Find or create the parent node based on the Title ID
-                    TreeNode parentNode = FindOrCreateNode(treeView1.Nodes, titleId);
-
-                    // Create the subnode for the Category
-                    TreeNode subNode = new TreeNode(fileName);
-
-                    // Add the subnode to the appropriate parent node
-                    if (category == "Game")
-                    {
-                        FindOrCreateCategoryNode(parentNode, "Game").Nodes.Add(subNode);
-                    }
-                    else if (category == "Patch")
-                    {
-                        FindOrCreateCategoryNode(parentNode, "Patch").Nodes.Add(subNode);
-                    }
-                    else if (category == "Addon")
-                    {
-                        FindOrCreateCategoryNode(parentNode, "Addon").Nodes.Add(subNode);
-                    }
-                    else if (category == "App")
-                    {
-                        FindOrCreateCategoryNode(parentNode, "App").Nodes.Add(subNode);
-                    }
-                }
-            }
-        }
 
         // Helper method to find or create a node with a specific text
         private TreeNode FindOrCreateNode(TreeNodeCollection nodes, string text)
