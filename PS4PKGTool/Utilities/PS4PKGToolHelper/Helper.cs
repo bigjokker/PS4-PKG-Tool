@@ -38,6 +38,11 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         
         public static bool FinalizePkgProcess = true;
 
+        public static bool LoadFromManifest { get; set; } = false;
+
+        public static bool LaunchEmpty { get; set; } = false;
+        public static bool IsOperationRunning { get; set; } = false;
+
         public static string PS4PKGToolTempDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\";
         public static string OrbisPubCmd = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\orbis-pub-cmd.exe";
         public static string Ps5BcJsonFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\ps5bc.json";
@@ -96,8 +101,8 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                 foreach (DataGridViewRow row in dataGridView.Rows)
                 {
-                    string filePath = row.Cells[12].Value.ToString() + @"\" + row.Cells[0].Value.ToString(); 
-                    string backported = (row.Cells[13].Value?.ToString() == "No") ? "No": row.Cells[13].Value?.ToString(); 
+                    string filePath = row.Cells[13].Value.ToString() + @"\" + row.Cells[0].Value.ToString();
+                    string backported = (row.Cells[14].Value?.ToString() == "No") ? "No": row.Cells[14].Value?.ToString();
 
                     updatedPkgFileList.Add(new BackportInfo
                     {
@@ -940,7 +945,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     foreach (var pkgFile in PKG.VerifiedPs4PkgList)
                     {
                         Unprotected_PKG pkg = Read_PKG(pkgFile);
-                        string filteredTitle = pkg.Param.Title.Replace(":", " -");
+                        string filteredTitle = pkg.Param.Title.SanitizeFileName();
                         string finalTitle = filteredTitle.Replace("  -", " -");
                         var fileExists = Path.Combine(bgmPath, finalTitle + ".AT9");
                         if (File.Exists(fileExists))
@@ -959,7 +964,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                                 if (name.ToString().ToUpper().EndsWith("_AT9"))
                                 {
-                                    var outputPath = Path.Combine(bgmPath, name.ToString().Replace("_AT9", ".AT9").Replace("SND0", finalTitle));
+                                    var outputPath = Path.Combine(bgmPath, name.ToString().Replace("_AT9", ".AT9").Replace("SND0", finalTitle).SanitizeFileName());
                                     allAT9.Add(outputPath);
 
                                     using (var pkgFileStream = File.OpenRead(pkgFile))
@@ -1019,7 +1024,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         }
 
                         string BGM_path = Path.Combine(PS4PKGToolTempDirectory, "BGM");
-                        string at9Path = Path.Combine(BGM_path, PS4_PKG.PS4_Title + ".AT9");
+                        string at9Path = Path.Combine(BGM_path, PS4_PKG.PS4_Title.SanitizeFileName() + ".AT9");
 
                         if (File.Exists(at9Path))
                         {

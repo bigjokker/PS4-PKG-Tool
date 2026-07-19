@@ -13,7 +13,6 @@ namespace PS4PKGTool.Utilities.Settings
         public List<string> PkgDirectories { get; set; }
         public bool ScanRecursive { get; set; }
         public bool PlayBgm { get; set; }
-        public bool ShowDirectorySettingsAtStartup { get; set; }
         public bool AutoSortRow { get; set; }
         public string LocalServerIp { get; set; } = string.Empty;
         public string Ps4Ip { get; set; } = string.Empty;
@@ -36,6 +35,7 @@ namespace PS4PKGTool.Utilities.Settings
 
         #region columnVisibility
 
+        public bool pkgTitleColumn { get; set; } = true;
         public bool pkgtitleIdColumn { get; set; }
         public bool pkgcontentIdColumn { get; set; }
         public bool pkgregionColumn { get; set; }
@@ -46,6 +46,8 @@ namespace PS4PKGTool.Utilities.Settings
         public bool pkgsizeColumn { get; set; }
         public bool pkgDirectoryColumn { get; set; }
         public bool pkgBackportColumn { get; set; }
+        public bool pkgLatestUpdateColumn { get; set; } = true;
+        public bool AutoFetchUpdate { get; set; } = false;
 
 
         #endregion columnVisibility

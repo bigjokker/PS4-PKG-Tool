@@ -15,6 +15,7 @@ namespace PS4PKGTool
     public partial class DLC : DarkUI.Forms.DarkForm
     {
         List<PS4_Tools.PKG.Official.StoreItems> Items = new List<PS4_Tools.PKG.Official.StoreItems>();
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public string filenames { get; set; }
 
         public DLC(List<PS4_Tools.PKG.Official.StoreItems> items)

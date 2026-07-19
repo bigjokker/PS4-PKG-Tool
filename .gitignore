@@ -1,0 +1,32 @@
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build results
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Ii][Pp][Hh]one/
+
+## NuGet
+packages/
+*.nupkg
+**/[Pp]ackages/*
+
+## .NET Core / VS Code
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Misc
+*.cache
+*.log
+*.tmp
+Thumbs.db

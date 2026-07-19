@@ -53,7 +53,6 @@ namespace PS4PKGTool
     @"pkg_directories=
 scan_recursive=False
 play_bgm=False
-show_directory_settings_at_startup=True
 auto_sort_row=False
 local_server_ip=
 ps4_ip=
@@ -81,14 +80,65 @@ pkg_type_column=True
 pkg_category_column=True
 pkg_size_column=True
 pkg_location_column=True
-pkg_backport_column=True";
+pkg_backport_column=True
+pkg_latestUpdate_column=True
+auto_fetch_update=False";
             File.WriteAllText(SettingFilePath, defaultSettings);
         }
 
         private static void ChooseStartupForm()
         {
-            Form startupForm = !appSettings_.ShowDirectorySettingsAtStartup ? new Main() : new PKG_Directory_Settings();
-            Application.Run(startupForm);
+            // Determine what's available
+            bool manifestAvailable = false;
+            int manifestEntryCount = 0;
+
+            if (ManifestHelper.ManifestExists()
+                && appSettings_.PkgDirectories.Count > 0
+                && appSettings_.PkgDirectories.Any(d => !string.IsNullOrEmpty(d)))
+            {
+                var manifest = ManifestHelper.LoadManifest();
+                if (manifest != null)
+                {
+                    var (isValid, reason) = ManifestHelper.ValidateManifest(manifest, appSettings_);
+                    if (isValid)
+                    {
+                        manifestAvailable = true;
+                        manifestEntryCount = manifest.Entries?.Count ?? 0;
+                    }
+                    else
+                    {
+                        Logger.LogInformation($"Manifest invalid: {reason}.");
+                    }
+                }
+            }
+
+            bool directoriesAvailable = appSettings_.PkgDirectories.Count > 0
+                && appSettings_.PkgDirectories.Any(d => !string.IsNullOrEmpty(d));
+            int directoryCount = appSettings_.PkgDirectories.Count(d => !string.IsNullOrEmpty(d));
+
+            // Show 3-option startup dialog
+            using (var prompt = new ManifestLoaderPrompt(
+                manifestAvailable, manifestEntryCount,
+                directoriesAvailable, directoryCount))
+            {
+                prompt.ShowDialog();
+
+                switch (prompt.Choice)
+                {
+                    case StartupChoice.Manifest:
+                        Helper.LoadFromManifest = true;
+                        break;
+                    case StartupChoice.Directory:
+                        Helper.LoadFromManifest = false;
+                        break;
+                    case StartupChoice.Empty:
+                        Helper.LoadFromManifest = false;
+                        Helper.LaunchEmpty = true;
+                        break;
+                }
+            }
+
+            Application.Run(new Main());
         }
     }
 }

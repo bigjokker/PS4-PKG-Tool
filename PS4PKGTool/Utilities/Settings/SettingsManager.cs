@@ -26,7 +26,6 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"pkg_directories={directories}");
                     writer.WriteLine($"scan_recursive={settings.ScanRecursive}");
                     writer.WriteLine($"play_bgm={settings.PlayBgm}");
-                    writer.WriteLine($"show_directory_settings_at_startup={settings.ShowDirectorySettingsAtStartup}");
                     writer.WriteLine($"auto_sort_row={settings.AutoSortRow}");
                     writer.WriteLine($"local_server_ip={settings.LocalServerIp}");
                     writer.WriteLine($"ps4_ip={settings.Ps4Ip}");
@@ -57,6 +56,8 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"pkg_size_column={settings.pkgsizeColumn}");
                     writer.WriteLine($"pkg_location_column={settings.pkgDirectoryColumn}");
                     writer.WriteLine($"pkg_backport_column={settings.pkgBackportColumn}");
+                    writer.WriteLine($"pkg_latestUpdate_column={settings.pkgLatestUpdateColumn}");
+                    writer.WriteLine($"auto_fetch_update={settings.AutoFetchUpdate}");
 
                 }
             }
@@ -84,7 +85,7 @@ namespace PS4PKGTool.Utilities.Settings
                             if (line.StartsWith("pkg_directories="))
                             {
                                 string directories = line.Substring("pkg_directories=".Length);
-                                appSettings_.PkgDirectories.AddRange(directories.Split(','));
+                                appSettings_.PkgDirectories.AddRange(directories.Split(',').Where(d => !string.IsNullOrEmpty(d)));
                             }
                             else if (line.StartsWith("scan_recursive="))
                             {
@@ -95,11 +96,6 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 bool.TryParse(line.Substring("play_bgm=".Length), out bool PlayBgm);
                                 appSettings_.PlayBgm = PlayBgm;
-                            }
-                            else if (line.StartsWith("show_directory_settings_at_startup="))
-                            {
-                                bool.TryParse(line.Substring("show_directory_settings_at_startup=".Length), out bool show_directory_settings_at_startup);
-                                appSettings_.ShowDirectorySettingsAtStartup = show_directory_settings_at_startup;
                             }
                             else if (line.StartsWith("auto_sort_row"))
                             {
@@ -245,6 +241,16 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 bool.TryParse(line.Substring("pkg_backport_column=".Length), out bool pkg_backport_column);
                                 appSettings_.pkgBackportColumn = pkg_backport_column;
+                            }
+                            else if (line.StartsWith("pkg_latestUpdate_column="))
+                            {
+                                bool.TryParse(line.Substring("pkg_latestUpdate_column=".Length), out bool pkg_latestUpdate_column);
+                                appSettings_.pkgLatestUpdateColumn = pkg_latestUpdate_column;
+                            }
+                            else if (line.StartsWith("auto_fetch_update="))
+                            {
+                                bool.TryParse(line.Substring("auto_fetch_update=".Length), out bool auto_fetch_update);
+                                appSettings_.AutoFetchUpdate = auto_fetch_update;
                             }
                         }
                     }

@@ -44,6 +44,7 @@ namespace PS4PKGTool
         public ProgramSetting()
         {
             InitializeComponent();
+            ShowThisAtStartup.Visible = false; // PKG Directory Settings form removed — now managed here
         }
 
         private void btnOfficialUpdateDownloadFolder_Click(object sender, EventArgs e)
@@ -70,7 +71,6 @@ namespace PS4PKGTool
             // directory settings
             darkCheckBoxRecursive.Checked = appSettings_.ScanRecursive;
             lbPkgDirectoryList.Items.AddRange(appSettings_.PkgDirectories?.Cast<string>().ToArray() ?? Array.Empty<string>());
-            darkCheckBoxDontshowthisagain.Checked = appSettings_.ShowDirectorySettingsAtStartup;
 
             AutoSortRow.Checked = appSettings_.AutoSortRow;
             PKGColorLabeling.Checked = appSettings_.PkgColorLabel;
@@ -84,7 +84,6 @@ namespace PS4PKGTool
             darkLabelAppPkgColorLabel.BackColor = (appSettings_.AppPkgBackColor == null) ? Color.FromArgb(60, 63, 65) : appSettings_.AppPkgBackColor;
             tbCustomNamePattern.Text = appSettings_.RenameCustomName;
 
-            ShowThisAtStartup.Checked = appSettings_.ShowDirectorySettingsAtStartup;
             tbOfficialUpdateDownloadFolder.Text = appSettings_.OfficialUpdateDownloadDirectory;
             tbPS4IP.Text = appSettings_.Ps4Ip;
             darkComboBoxServerIP.Text = appSettings_.LocalServerIp;
@@ -103,6 +102,8 @@ namespace PS4PKGTool
             ContentId.Checked = appSettings_.pkgcontentIdColumn;
             TitleId.Checked = appSettings_.pkgtitleIdColumn;
             cbBackported.Checked = appSettings_.pkgBackportColumn;
+            cbLatestUpdate.Checked = appSettings_.pkgLatestUpdateColumn;
+            cbAutoFetchUpdate.Checked = appSettings_.AutoFetchUpdate;
             BGM.Checked = appSettings_.PlayBgm;
             #endregion LoadSetting
 
@@ -155,7 +156,6 @@ namespace PS4PKGTool
 
             appSettings_.OfficialUpdateDownloadDirectory = tbOfficialUpdateDownloadFolder.Text;
             appSettings_.PlayBgm = BGM.Checked;
-            appSettings_.ShowDirectorySettingsAtStartup = ShowThisAtStartup.Checked;
             appSettings_.AutoSortRow = AutoSortRow.Checked;
             appSettings_.PkgColorLabel =PKGColorLabeling.Checked;
 
@@ -182,6 +182,8 @@ namespace PS4PKGTool
             appSettings_.pkgsizeColumn = Size.Checked;
             appSettings_.pkgDirectoryColumn = Location.Checked;
             appSettings_.pkgBackportColumn = cbBackported.Checked;
+            appSettings_.pkgLatestUpdateColumn = cbLatestUpdate.Checked;
+            appSettings_.AutoFetchUpdate = cbAutoFetchUpdate.Checked;
             appSettings_.psvr_neo_ps5bc_check = cbPs5BcCheck.Checked;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;
@@ -192,7 +194,6 @@ namespace PS4PKGTool
             var PkgDirectoryList = lbPkgDirectoryList.Items.Cast<string>().ToList();
             appSettings_.PkgDirectories = PkgDirectoryList;
             appSettings_.ScanRecursive = darkCheckBoxRecursive.Checked;
-            appSettings_.ShowDirectorySettingsAtStartup = darkCheckBoxDontshowthisagain.Checked;
 
             if (labelPs5BcJsonDownloadDate.Text != "" || labelPs5BcJsonDownloadDate.Text.Length != 0)
                 appSettings_.Ps5BcJsonLastDownloadDate = DateTime.Parse(labelPs5BcJsonDownloadDate.Text);
