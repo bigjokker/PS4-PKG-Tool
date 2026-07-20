@@ -128,6 +128,17 @@ namespace PS4PKGTool
             tbFilterTreeView.TextChanged += (_, _) => ApplyFilter();
             btnClearFilter.Click += (_, _) => { tbFilterTreeView.Text = ""; };
 
+            // Collapse GLV groups on initial population (control must be visible first)
+            var glvCollapseDone = false;
+            subTabControl.SelectedIndexChanged += (_, _) =>
+            {
+                if (!glvCollapseDone && subTabControl.SelectedTab == tabPageGroup && groupedListView != null)
+                {
+                    glvCollapseDone = true;
+                    BeginInvoke((MethodInvoker)groupedListView.CollapseAll);
+                }
+            };
+
             // Grouped list view filter + selection
             tbGroupFilter.TextChanged += (_, _) => ApplyGroupFilter();
             btnGroupClear.Click += (_, _) => { tbGroupFilter.Text = ""; };
@@ -2220,25 +2231,38 @@ namespace PS4PKGTool
                 }
             );
 
-            groupedListView.ExpandAll();
+            // Groups start expanded; collapse on first tab switch to Group
         }
 
         private void GroupedListView_SelectedItemChanged(object sender, EventArgs e)
         {
             string filePath = groupedListView?.SelectedFilePath;
-            if (string.IsNullOrEmpty(filePath)) return;
-            if (!File.Exists(filePath)) return;
+            if (string.IsNullOrEmpty(filePath))
+            {
+                Logger.LogInformation("GLV selection: SelectedFilePath is null/empty");
+                return;
+            }
+            if (!File.Exists(filePath))
+            {
+                Logger.LogInformation($"GLV selection: file not found: {filePath}");
+                return;
+            }
 
             // Select the same PKG in the DataGridView to trigger detail loading
             var dt = PKGGridView.DataSource as DataTable;
-            if (dt == null) return;
+            if (dt == null)
+            {
+                Logger.LogInformation("GLV selection: DataSource is null");
+                return;
+            }
 
             // Find the row index matching this file path
             for (int i = 0; i < PKGGridView.Rows.Count; i++)
             {
                 var row = PKGGridView.Rows[i];
-                string dir = row.Cells[13].Value?.ToString() ?? "";
-                string fn = row.Cells[0].Value?.ToString() ?? "";
+                if (row.Cells[0].Value == null || row.Cells[13].Value == null) continue;
+                string dir = row.Cells[13].Value.ToString();
+                string fn = row.Cells[0].Value.ToString();
                 string rowPath = System.IO.Path.Combine(dir, fn);
 
                 if (string.Equals(rowPath, filePath, StringComparison.OrdinalIgnoreCase))
@@ -2246,9 +2270,10 @@ namespace PS4PKGTool
                     PKGGridView.ClearSelection();
                     PKGGridView.Rows[i].Selected = true;
                     PKGGridView.CurrentCell = PKGGridView.Rows[i].Cells[0];
-                    break;
+                    return;
                 }
             }
+            Logger.LogInformation($"GLV selection: no grid row matches '{filePath}'");
         }
 
         private void FetchAllUpdateVersions()
@@ -4904,7 +4929,7 @@ namespace PS4PKGTool
                     item.Row["Size"]?.ToString() ?? ""
                 }
             );
-            groupedListView.ExpandAll();
+            // Groups start expanded; collapse on first tab switch to Group
             }
             catch (Exception ex)
             {
