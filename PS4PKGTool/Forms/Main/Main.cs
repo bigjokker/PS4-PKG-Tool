@@ -4487,6 +4487,58 @@ namespace PS4PKGTool
             bgw.RunWorkerAsync();
         }
 
+        /// <summary>
+        /// Synchronous version of ExtractSelectedPKGData for drag-drop.
+        /// orbis-pub-cmd needs the target directory to exist, so we pre-create it.
+        /// </summary>
+        private void ExtractFilesSync(List<string> nodeList, string extractLocation, bool preserveStructure)
+        {
+            string inPath = PKG.SelectedPKGFilename;
+            string renameDir = Path.GetDirectoryName(inPath);
+            string renameTmp = Path.Combine(renameDir, "temp_ps4pkgsafe.pkg");
+            bool wasRenamed = false;
+            try { File.Move(inPath, renameTmp); wasRenamed = true; } catch { }
+            string safeIn = wasRenamed ? renameTmp : inPath;
+
+            try
+            {
+                foreach (string targ_path in nodeList)
+                {
+                    bool isDirectory = targ_path.EndsWith("/") || targ_path.EndsWith("\\");
+
+                    string out_path = preserveStructure
+                        ? Path.Combine(extractLocation, targ_path.TrimEnd('/').Replace("/", @"\"))
+                        : Path.Combine(extractLocation, Path.GetFileName(targ_path.TrimEnd('/')));
+
+                    // Pre-create output directory/file path
+                    if (isDirectory)
+                        Directory.CreateDirectory(out_path);
+                    else
+                        Directory.CreateDirectory(Path.GetDirectoryName(out_path) ?? extractLocation);
+
+                    string arcPath = isDirectory ? targ_path : targ_path.TrimEnd('/');
+                    var proc = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
+                            Arguments = $"img_extract --passcode {PKG.Passcode} \"{safeIn}\":{arcPath} \"{out_path}\"",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = true
+                        }
+                    };
+                    proc.Start();
+                    proc.WaitForExit();
+                }
+            }
+            finally
+            {
+                try { if (wasRenamed && File.Exists(renameTmp)) File.Move(renameTmp, inPath); } catch { }
+            }
+        }
+
         private void PKGTreeView_MouseClick(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
@@ -4500,8 +4552,8 @@ namespace PS4PKGTool
             if (e.Item is not TreeNode node) return;
             if (!CheckOrbisPubCmdExists()) return;
 
-            bool isDir = node.Nodes.Count > 0;
-            var nodeList = new List<string> { isDir ? node.FullPath + "/" : node.FullPath };
+            if (node.Nodes.Count > 0) return; // directories disabled
+            var nodeList = new List<string> { node.FullPath };
 
             string dragBase = Path.Combine(PS4PKGToolTempDirectory, "dragdrop");
             string dragDir = Path.Combine(dragBase, Guid.NewGuid().ToString());
@@ -4510,7 +4562,7 @@ namespace PS4PKGTool
             Cursor.Current = Cursors.WaitCursor;
             try
             {
-                ExtractSelectedPKGData(nodeList, dragDir, preserveStructure: true);
+                ExtractFilesSync(nodeList, dragDir, preserveStructure: true);
 
                 var extractedFiles = Directory.GetFiles(dragDir, "*", SearchOption.AllDirectories).ToList();
                 if (extractedFiles.Count == 0) return;
@@ -4537,7 +4589,8 @@ namespace PS4PKGTool
                 if (item.Text == "...") continue;
                 if (item.Tag is not TreeNodeInfo info || info.Node == null) continue;
                 bool isDir = info.Node.Nodes.Count > 0;
-                nodeList.Add(isDir ? info.Node.FullPath + "/" : info.Node.FullPath);
+                if (isDir) continue; // drag-drop for directories disabled
+                nodeList.Add(info.Node.FullPath);
             }
             if (nodeList.Count == 0) return;
 
@@ -4548,7 +4601,7 @@ namespace PS4PKGTool
             Cursor.Current = Cursors.WaitCursor;
             try
             {
-                ExtractSelectedPKGData(nodeList, dragDir, preserveStructure: true);
+                ExtractFilesSync(nodeList, dragDir, preserveStructure: true);
 
                 var extractedFiles = Directory.GetFiles(dragDir, "*", SearchOption.AllDirectories).ToList();
                 if (extractedFiles.Count == 0) return;
