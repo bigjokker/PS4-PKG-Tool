@@ -4522,12 +4522,14 @@ namespace PS4PKGTool
 
                 try
                 {
+                    // Use trailing slash for directories so orbis-pub-cmd extracts recursively
+                    string pkgArg = isDir ? path : path.TrimEnd('/');
                     var proc = new Process
                     {
                         StartInfo = new ProcessStartInfo
                         {
                             FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
-                            Arguments = $"img_extract --passcode {PKG.Passcode} \"{safeIn}\":{path.TrimEnd('/')} \"{outPath}\"",
+                            Arguments = $"img_extract --passcode {PKG.Passcode} \"{safeIn}\":{pkgArg} \"{outPath}\"",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
@@ -4594,12 +4596,15 @@ namespace PS4PKGTool
 
                         if (isDir) Directory.CreateDirectory(outPath);
 
+                        // Use trailing slash for directories so orbis-pub-cmd extracts recursively
+                        string pkgPath = isDir ? cleanPath + "/" : cleanPath;
+
                         var proc = new Process
                         {
                             StartInfo = new ProcessStartInfo
                             {
                                 FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
-                                Arguments = $"img_extract --passcode {PKG.Passcode} \"{safeIn}\":{cleanPath} \"{outPath}\"",
+                                Arguments = $"img_extract --passcode {PKG.Passcode} \"{safeIn}\":{pkgPath} \"{outPath}\"",
                                 UseShellExecute = false,
                                 RedirectStandardOutput = true,
                                 RedirectStandardError = true,
