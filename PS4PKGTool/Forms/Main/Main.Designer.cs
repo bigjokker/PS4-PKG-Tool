@@ -2067,14 +2067,23 @@ namespace PS4PKGTool
             ExtractDecryptedEntryToolStripMenuItem.Size = new System.Drawing.Size(210, 22);
             ExtractDecryptedEntryToolStripMenuItem.Text = "Extract all decrypted entry";
             ExtractDecryptedEntryToolStripMenuItem.Click += ExtractDecryptedEntryToolStripMenuItem_Click;
-            // 
-            // imageList1
-            // 
-            imageList1.ColorDepth = ColorDepth.Depth8Bit;
-            imageList1.ImageStream = (ImageListStreamer)resources.GetObject("imageList1.ImageStream");
-            imageList1.TransparentColor = System.Drawing.Color.Transparent;
-            imageList1.Images.SetKeyName(0, "Folder_16x.png");
-            imageList1.Images.SetKeyName(1, "Document_16x.png");
+            //
+            // imageList1 — file-type icons for TreeView and ListView
+            //
+            imageList1.ColorDepth = ColorDepth.Depth32Bit;
+            imageList1.ImageSize = new System.Drawing.Size(16, 16);
+            string iconDir = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath), @"..\..\..\..\TreeView Icon");
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "folder.png")));       // 0
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "document.png")));     // 1
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "image.png")));        // 2
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "config.png")));       // 3
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "binary.png")));       // 4
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "folder-open.png")));  // 5
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "audio.png")));        // 6
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "file-unknown.png"))); // 7
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "package.png")));      // 8
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "video.png")));        // 9
+            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "code.png")));         // 10
             // 
             // contextMenuOfficialUpdate
             // 
@@ -2972,6 +2981,15 @@ namespace PS4PKGTool
             listView1.TabIndex = 0;
             listView1.UseCompatibleStateImageBehavior = false;
             listView1.View = View.Details;
+            columnHeader1.Text = "Name";
+            columnHeader1.Width = 200;
+            columnHeader5.Text = "Type";
+            columnHeader5.Width = 80;
+            columnHeader6.Text = "Path";
+            columnHeader6.Width = 150;
+            columnHeader10.Text = "Size";
+            columnHeader10.Width = 70;
+            listView1.Columns.AddRange(new ColumnHeader[] { columnHeader1, columnHeader5, columnHeader6, columnHeader10 });
             listView1.ColumnWidthChanging += listView1_ColumnWidthChanging;
             listView1.ItemActivate += listView1_ItemActivate;
             listView1.MouseDoubleClick += listView1_MouseDoubleClick;

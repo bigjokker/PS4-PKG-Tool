@@ -4035,7 +4035,7 @@ namespace PS4PKGTool
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
-                        Arguments = "img_file_list --passcode " + PKG.Passcode + " \"" + PKG.SelectedPKGFilename + "\"",
+                        Arguments = $"img_file_list --passcode {PKG.Passcode} --oformat \"long+original_size\" \"{PKG.SelectedPKGFilename}\"",
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         CreateNoWindow = true
@@ -4130,6 +4130,19 @@ namespace PS4PKGTool
                 Logger.LogInformation("PKG file list loaded.");
                 EnableControls(darkMenuStrip1);
                 EnableControls(PKGTreeView);
+
+                // Select the first root node (Image0) so the ListView populates
+                if (PKGTreeView.Nodes.Count > 0)
+                {
+                    rootNodes = new List<TreeNode>();
+                    foreach (TreeNode rootNode in PKGTreeView.Nodes)
+                        rootNodes.Add(rootNode);
+                    PKGTreeView.SelectedNode = PKGTreeView.Nodes[0];
+                    TreeView.currentNode = PKGTreeView.Nodes[0];
+                    PKG.NodeFullPath = PKGTreeView.Nodes[0].FullPath;
+                    PopulateListView();
+                    listView1.RefreshLayout();
+                }
             };
             bg.RunWorkerAsync();
         }
@@ -5951,13 +5964,16 @@ namespace PS4PKGTool
         private static int IconFor(string path)
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext)) return 4; // no extension → binary
             return ext switch
             {
-                ".prx" or ".sprx" => 1,        // binary/module
-                ".png" or ".dds" or ".jpg" => 1, // image (shared doc icon for now)
-                ".xml" or ".json" or ".sfm" => 1,
-                ".at9" or ".mp3" or ".wav" => 1,
-                _ => 1                          // default: document icon
+                ".png" or ".jpg" or ".dds" => 2,                          // image
+                ".txt" => 1,                                              // document
+                ".xml" or ".json" or ".sfo" or ".ini" => 3,              // config
+                ".at9" or ".ogg" or ".mp3" or ".wav" => 6,              // audio
+                ".mp4" or ".avi" => 9,                                    // video
+                ".pkg" => 8,                                              // package
+                _ => 4,                                                   // binary (default)
             };
         }
 
