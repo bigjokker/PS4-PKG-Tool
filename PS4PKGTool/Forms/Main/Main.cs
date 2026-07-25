@@ -4501,48 +4501,16 @@ namespace PS4PKGTool
             if (!CheckOrbisPubCmdExists()) return;
 
             bool isDir = node.Nodes.Count > 0;
-            string path = isDir ? node.FullPath + "/" : node.FullPath;
+            var nodeList = new List<string> { isDir ? node.FullPath + "/" : node.FullPath };
 
             string dragBase = Path.Combine(PS4PKGToolTempDirectory, "dragdrop");
             string dragDir = Path.Combine(dragBase, Guid.NewGuid().ToString());
             Directory.CreateDirectory(dragDir);
-            // Extract to a subfolder so folder structure is preserved
-            string outPath = Path.Combine(dragDir, node.Text);
-            if (isDir) Directory.CreateDirectory(outPath);
 
             Cursor.Current = Cursors.WaitCursor;
             try
             {
-                string inPath = PKG.SelectedPKGFilename;
-                string renameDir = Path.GetDirectoryName(inPath);
-                string renameTmp = Path.Combine(renameDir, "temp_ps4pkgsafe.pkg");
-                bool renamed = false;
-                try { File.Move(inPath, renameTmp); renamed = true; } catch { }
-                string safeIn = renamed ? renameTmp : inPath;
-
-                try
-                {
-                    // Use trailing slash for directories so orbis-pub-cmd extracts recursively
-                    string pkgArg = isDir ? path : path.TrimEnd('/');
-                    var proc = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
-                            Arguments = $"img_extract --passcode {PKG.Passcode} \"{safeIn}\":{pkgArg} \"{outPath}\"",
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            CreateNoWindow = true
-                        }
-                    };
-                    proc.Start();
-                    proc.WaitForExit();
-                }
-                finally
-                {
-                    try { if (renamed && File.Exists(renameTmp)) File.Move(renameTmp, inPath); } catch { }
-                }
+                ExtractSelectedPKGData(nodeList, dragDir, preserveStructure: true);
 
                 var extractedFiles = Directory.GetFiles(dragDir, "*", SearchOption.AllDirectories).ToList();
                 if (extractedFiles.Count == 0) return;
@@ -4562,15 +4530,16 @@ namespace PS4PKGTool
         {
             if (!CheckOrbisPubCmdExists()) return;
 
-            // Collect all selected items (files and directories)
-            var paths = new List<string>();
+            // Collect paths same as CtxExtractFolder_Click
+            var nodeList = new List<string>();
             foreach (ListViewItem item in listView1.SelectedItems)
             {
-                if (item.Tag is not TreeNodeInfo info || info.Path == "...") continue;
-                bool isDir = info.Node != null && info.Node.Nodes.Count > 0;
-                paths.Add(isDir ? (info.Node.FullPath + "/") : (info.Node?.FullPath ?? info.Path));
+                if (item.Text == "...") continue;
+                if (item.Tag is not TreeNodeInfo info || info.Node == null) continue;
+                bool isDir = info.Node.Nodes.Count > 0;
+                nodeList.Add(isDir ? info.Node.FullPath + "/" : info.Node.FullPath);
             }
-            if (paths.Count == 0) return;
+            if (nodeList.Count == 0) return;
 
             string dragBase = Path.Combine(PS4PKGToolTempDirectory, "dragdrop");
             string dragDir = Path.Combine(dragBase, Guid.NewGuid().ToString());
@@ -4579,48 +4548,8 @@ namespace PS4PKGTool
             Cursor.Current = Cursors.WaitCursor;
             try
             {
-                string inPath = PKG.SelectedPKGFilename;
-                string renameDir = Path.GetDirectoryName(inPath);
-                string renameTmp = Path.Combine(renameDir, "temp_ps4pkgsafe.pkg");
-                bool renamed = false;
-                try { File.Move(inPath, renameTmp); renamed = true; } catch { }
-                string safeIn = renamed ? renameTmp : inPath;
+                ExtractSelectedPKGData(nodeList, dragDir, preserveStructure: true);
 
-                try
-                {
-                    foreach (string path in paths)
-                    {
-                        bool isDir = path.EndsWith("/");
-                        string cleanPath = isDir ? path.TrimEnd('/') : path;
-                        string outPath = Path.Combine(dragDir, Path.GetFileName(cleanPath));
-
-                        if (isDir) Directory.CreateDirectory(outPath);
-
-                        // Use trailing slash for directories so orbis-pub-cmd extracts recursively
-                        string pkgPath = isDir ? cleanPath + "/" : cleanPath;
-
-                        var proc = new Process
-                        {
-                            StartInfo = new ProcessStartInfo
-                            {
-                                FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
-                                Arguments = $"img_extract --passcode {PKG.Passcode} \"{safeIn}\":{pkgPath} \"{outPath}\"",
-                                UseShellExecute = false,
-                                RedirectStandardOutput = true,
-                                RedirectStandardError = true,
-                                CreateNoWindow = true
-                            }
-                        };
-                        proc.Start();
-                        proc.WaitForExit();
-                    }
-                }
-                finally
-                {
-                    try { if (renamed && File.Exists(renameTmp)) File.Move(renameTmp, inPath); } catch { }
-                }
-
-                // Gather all extracted files for the drag operation
                 var extractedFiles = Directory.GetFiles(dragDir, "*", SearchOption.AllDirectories).ToList();
                 if (extractedFiles.Count == 0) return;
 
