@@ -334,10 +334,10 @@ namespace PS4PKGTool
             labelUpdateVersion = new DarkUI.Controls.DarkLabel();
             labelTotalSize = new DarkUI.Controls.DarkLabel();
             labelTotalFile = new DarkUI.Controls.DarkLabel();
+            columnHeader10 = new ColumnHeader();
             columnHeader7 = new ColumnHeader();
             columnHeader8 = new ColumnHeader();
             columnHeader9 = new ColumnHeader();
-            columnHeader10 = new ColumnHeader();
             contextMenuPKGGridView.SuspendLayout();
             darkMenuStrip1.SuspendLayout();
             darkStatusStrip1.SuspendLayout();
@@ -2067,23 +2067,12 @@ namespace PS4PKGTool
             ExtractDecryptedEntryToolStripMenuItem.Size = new System.Drawing.Size(210, 22);
             ExtractDecryptedEntryToolStripMenuItem.Text = "Extract all decrypted entry";
             ExtractDecryptedEntryToolStripMenuItem.Click += ExtractDecryptedEntryToolStripMenuItem_Click;
-            //
-            // imageList1 — file-type icons for TreeView and ListView
-            //
+            // 
+            // imageList1
+            // 
             imageList1.ColorDepth = ColorDepth.Depth32Bit;
             imageList1.ImageSize = new System.Drawing.Size(16, 16);
-            string iconDir = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath), @"..\..\..\..\TreeView Icon");
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "folder.png")));       // 0
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "document.png")));     // 1
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "image.png")));        // 2
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "config.png")));       // 3
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "binary.png")));       // 4
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "folder-open.png")));  // 5
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "audio.png")));        // 6
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "file-unknown.png"))); // 7
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "package.png")));      // 8
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "video.png")));        // 9
-            imageList1.Images.Add(System.Drawing.Image.FromFile(System.IO.Path.Combine(iconDir, "code.png")));         // 10
+            imageList1.TransparentColor = System.Drawing.Color.Transparent;
             // 
             // contextMenuOfficialUpdate
             // 
@@ -2205,16 +2194,19 @@ namespace PS4PKGTool
             // columnHeader1
             // 
             columnHeader1.Text = "Name";
+            columnHeader1.Width = 123;
             // 
             // columnHeader5
             // 
             columnHeader5.Text = "Type";
             columnHeader5.TextAlign = HorizontalAlignment.Center;
+            columnHeader5.Width = 123;
             // 
             // columnHeader6
             // 
             columnHeader6.Text = "Path";
             columnHeader6.TextAlign = HorizontalAlignment.Center;
+            columnHeader6.Width = 123;
             // 
             // darkSectionPanel7
             // 
@@ -2729,7 +2721,6 @@ namespace PS4PKGTool
             // 
             // panel7
             // 
-            panel7.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             panel7.Controls.Add(darkSectionPanel2);
             panel7.Controls.Add(darkSectionPanel3);
             panel7.Controls.Add(darkSectionPanel1);
@@ -2837,23 +2828,23 @@ namespace PS4PKGTool
             // 
             // panel6
             // 
-            panel6.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             panel6.Controls.Add(btnExtractFullPKG);
             panel6.Controls.Add(darkLabel5);
             panel6.Controls.Add(tbPasscode);
             panel6.Controls.Add(btnViewPKGData);
             panel6.Controls.Add(darkSectionPanel4);
-            panel6.Location = new System.Drawing.Point(21, 18);
+            panel6.Dock = DockStyle.Fill;
+            panel6.Location = new System.Drawing.Point(3, 2);
             panel6.Margin = new Padding(3, 2, 3, 2);
             panel6.Name = "panel6";
-            panel6.Size = new System.Drawing.Size(909, 532);
+            panel6.Size = new System.Drawing.Size(945, 552);
             panel6.TabIndex = 97;
             // 
             // btnExtractFullPKG
             // 
             btnExtractFullPKG.Anchor = AnchorStyles.Top;
             btnExtractFullPKG.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnExtractFullPKG.Location = new System.Drawing.Point(600, 15);
+            btnExtractFullPKG.Location = new System.Drawing.Point(618, 12);
             btnExtractFullPKG.Margin = new Padding(3, 2, 3, 2);
             btnExtractFullPKG.Name = "btnExtractFullPKG";
             btnExtractFullPKG.Size = new System.Drawing.Size(108, 23);
@@ -2866,7 +2857,7 @@ namespace PS4PKGTool
             darkLabel5.Anchor = AnchorStyles.Top;
             darkLabel5.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkLabel5.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel5.Location = new System.Drawing.Point(201, 19);
+            darkLabel5.Location = new System.Drawing.Point(219, 16);
             darkLabel5.Name = "darkLabel5";
             darkLabel5.Size = new System.Drawing.Size(59, 15);
             darkLabel5.TabIndex = 96;
@@ -2876,7 +2867,7 @@ namespace PS4PKGTool
             // 
             tbPasscode.Anchor = AnchorStyles.Top;
             tbPasscode.Font = new System.Drawing.Font("Segoe UI", 9F);
-            tbPasscode.Location = new System.Drawing.Point(267, 15);
+            tbPasscode.Location = new System.Drawing.Point(285, 12);
             tbPasscode.Margin = new Padding(3, 2, 3, 2);
             tbPasscode.MaxLength = 32;
             tbPasscode.Multiline = true;
@@ -2889,7 +2880,7 @@ namespace PS4PKGTool
             // 
             btnViewPKGData.Anchor = AnchorStyles.Top;
             btnViewPKGData.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnViewPKGData.Location = new System.Drawing.Point(475, 15);
+            btnViewPKGData.Location = new System.Drawing.Point(493, 12);
             btnViewPKGData.Margin = new Padding(3, 2, 3, 2);
             btnViewPKGData.Name = "btnViewPKGData";
             btnViewPKGData.Size = new System.Drawing.Size(119, 23);
@@ -2905,7 +2896,7 @@ namespace PS4PKGTool
             darkSectionPanel4.Margin = new Padding(3, 2, 3, 2);
             darkSectionPanel4.Name = "darkSectionPanel4";
             darkSectionPanel4.SectionHeader = "PKG Files";
-            darkSectionPanel4.Size = new System.Drawing.Size(909, 485);
+            darkSectionPanel4.Size = new System.Drawing.Size(945, 505);
             darkSectionPanel4.TabIndex = 95;
             darkSectionPanel4.Tag = "";
             // 
@@ -2929,8 +2920,8 @@ namespace PS4PKGTool
             splitContainer1.Panel2.Controls.Add(btnSearchFileInTreeView);
             splitContainer1.Panel2.Controls.Add(tbSearchTreeView);
             splitContainer1.Panel2.Controls.Add(darkLabel6);
-            splitContainer1.Size = new System.Drawing.Size(907, 459);
-            splitContainer1.SplitterDistance = 404;
+            splitContainer1.Size = new System.Drawing.Size(943, 479);
+            splitContainer1.SplitterDistance = 420;
             splitContainer1.TabIndex = 0;
             // 
             // PKGTreeView
@@ -2953,7 +2944,7 @@ namespace PS4PKGTool
             PKGTreeView.ShowLines = true;
             PKGTreeView.ShowPlusMinus = true;
             PKGTreeView.ShowRootLines = true;
-            PKGTreeView.Size = new System.Drawing.Size(402, 457);
+            PKGTreeView.Size = new System.Drawing.Size(418, 477);
             PKGTreeView.Sorted = false;
             PKGTreeView.TabIndex = 0;
             PKGTreeView.TopNode = null;
@@ -2967,29 +2958,20 @@ namespace PS4PKGTool
             // listView1
             // 
             listView1.AllowDrop = true;
+            listView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             listView1.BackColor = System.Drawing.Color.FromArgb(81, 81, 81);
-            listView1.Dock = DockStyle.Fill;
             listView1.FullRowSelect = true;
             listView1.LargeImageList = imageList1;
             listView1.ListViewItemSorter = null;
-            listView1.Location = new System.Drawing.Point(0, 0);
+            listView1.Location = new System.Drawing.Point(0, 28);
             listView1.Margin = new Padding(3, 4, 3, 4);
             listView1.MultiSelect = true;
             listView1.Name = "listView1";
-            listView1.Size = new System.Drawing.Size(497, 457);
+            listView1.Size = new System.Drawing.Size(517, 449);
             listView1.SmallImageList = null;
             listView1.TabIndex = 0;
             listView1.UseCompatibleStateImageBehavior = false;
             listView1.View = View.Details;
-            columnHeader1.Text = "Name";
-            columnHeader1.Width = 200;
-            columnHeader5.Text = "Type";
-            columnHeader5.Width = 80;
-            columnHeader6.Text = "Path";
-            columnHeader6.Width = 150;
-            columnHeader10.Text = "Size";
-            columnHeader10.Width = 70;
-            listView1.Columns.AddRange(new ColumnHeader[] { columnHeader1, columnHeader5, columnHeader6, columnHeader10 });
             listView1.ColumnWidthChanging += listView1_ColumnWidthChanging;
             listView1.ItemActivate += listView1_ItemActivate;
             listView1.MouseDoubleClick += listView1_MouseDoubleClick;
@@ -3000,21 +2982,21 @@ namespace PS4PKGTool
             // tbFilterTreeView
             // 
             tbFilterTreeView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            tbFilterTreeView.Location = new System.Drawing.Point(0, 2);
+            tbFilterTreeView.Location = new System.Drawing.Point(1, 2);
             tbFilterTreeView.Margin = new Padding(3, 2, 24, 2);
             tbFilterTreeView.Name = "tbFilterTreeView";
             tbFilterTreeView.PlaceholderText = "Filter filename here";
-            tbFilterTreeView.Size = new System.Drawing.Size(453, 23);
+            tbFilterTreeView.Size = new System.Drawing.Size(473, 23);
             tbFilterTreeView.TabIndex = 100;
             // 
             // btnClearFilter
             // 
             btnClearFilter.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnClearFilter.Font = new System.Drawing.Font("Segoe UI", 8F);
-            btnClearFilter.Location = new System.Drawing.Point(459, 2);
+            btnClearFilter.Location = new System.Drawing.Point(476, 2);
             btnClearFilter.Margin = new Padding(0, 2, 3, 2);
             btnClearFilter.Name = "btnClearFilter";
-            btnClearFilter.Size = new System.Drawing.Size(24, 23);
+            btnClearFilter.Size = new System.Drawing.Size(39, 23);
             btnClearFilter.TabIndex = 101;
             btnClearFilter.Text = "✕";
             // 
@@ -3022,7 +3004,7 @@ namespace PS4PKGTool
             // 
             btnSearchFileInTreeView.Anchor = AnchorStyles.Top;
             btnSearchFileInTreeView.Image = (System.Drawing.Image)resources.GetObject("btnSearchFileInTreeView.Image");
-            btnSearchFileInTreeView.Location = new System.Drawing.Point(366, 302);
+            btnSearchFileInTreeView.Location = new System.Drawing.Point(376, 302);
             btnSearchFileInTreeView.Margin = new Padding(3, 2, 3, 2);
             btnSearchFileInTreeView.Name = "btnSearchFileInTreeView";
             btnSearchFileInTreeView.Size = new System.Drawing.Size(34, 22);
@@ -3033,7 +3015,7 @@ namespace PS4PKGTool
             // tbSearchTreeView
             // 
             tbSearchTreeView.Anchor = AnchorStyles.Top;
-            tbSearchTreeView.Location = new System.Drawing.Point(158, 302);
+            tbSearchTreeView.Location = new System.Drawing.Point(168, 302);
             tbSearchTreeView.Margin = new Padding(3, 2, 3, 2);
             tbSearchTreeView.Name = "tbSearchTreeView";
             tbSearchTreeView.Size = new System.Drawing.Size(199, 23);
@@ -3044,7 +3026,7 @@ namespace PS4PKGTool
             // 
             darkLabel6.Anchor = AnchorStyles.Top;
             darkLabel6.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            darkLabel6.Location = new System.Drawing.Point(88, 306);
+            darkLabel6.Location = new System.Drawing.Point(98, 306);
             darkLabel6.Name = "darkLabel6";
             darkLabel6.Size = new System.Drawing.Size(64, 15);
             darkLabel6.TabIndex = 98;
@@ -3385,6 +3367,11 @@ namespace PS4PKGTool
             labelTotalFile.TabIndex = 101;
             labelTotalFile.Text = "...";
             // 
+            // columnHeader10
+            // 
+            columnHeader10.Text = "Size";
+            columnHeader10.Width = 123;
+            // 
             // columnHeader7
             // 
             columnHeader7.Text = "Name";
@@ -3399,11 +3386,6 @@ namespace PS4PKGTool
             // 
             columnHeader9.Text = "Path";
             columnHeader9.Width = 123;
-            // 
-            // columnHeader10
-            // 
-            columnHeader10.Text = "Size";
-            columnHeader10.Width = 123;
             // 
             // Main
             // 

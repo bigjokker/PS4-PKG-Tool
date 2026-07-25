@@ -128,6 +128,27 @@ namespace PS4PKGTool
             tbFilterTreeView.TextChanged += (_, _) => ApplyFilter();
             btnClearFilter.Click += (_, _) => { tbFilterTreeView.Text = ""; };
 
+            // Load treeview file-type icons
+            try
+            {
+                string iconDir = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), @"..\..\..\..\TreeView Icon");
+                if (Directory.Exists(iconDir))
+                {
+                string[] ordered = { "folder", "document", "image", "config", "binary",
+                                     "folder-open", "audio", "file-unknown", "package", "video", "code" };
+                for (int i = 0; i < ordered.Length; i++)
+                {
+                    string path = Path.Combine(iconDir, ordered[i] + ".png");
+                    if (File.Exists(path))
+                    {
+                        using var bmp = new Bitmap(path);
+                        imageList1.Images.Add(ordered[i], new Bitmap(bmp));
+                    }
+                }
+            }
+            }
+            catch (Exception ex) { Logger.LogWarning($"Icon load: {ex.Message}"); }
+
             // Collapse GLV groups on initial population (control must be visible first)
             var glvCollapseDone = false;
             subTabControl.SelectedIndexChanged += (_, _) =>
