@@ -42,18 +42,21 @@ namespace PS4PKGTool
         private void btnLoadFromManifest_Click(object sender, EventArgs e)
         {
             Choice = StartupChoice.Manifest;
+            this.DialogResult = DialogResult.OK;
             this.Close();
         }
 
         private void btnScanFromDirectory_Click(object sender, EventArgs e)
         {
             Choice = StartupChoice.Directory;
+            this.DialogResult = DialogResult.OK;
             this.Close();
         }
 
         private void btnLaunchEmpty_Click(object sender, EventArgs e)
         {
             Choice = StartupChoice.Empty;
+            this.DialogResult = DialogResult.OK;
             this.Close();
         }
     }

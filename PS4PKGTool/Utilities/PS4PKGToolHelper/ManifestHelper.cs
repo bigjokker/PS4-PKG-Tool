@@ -176,7 +176,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     entry.TitleId ?? "",
                     entry.ContentId ?? "",
                     regionIcon,
-                    entry.SystemVersion ?? "",
+                    FormatSystemVersion(entry.SystemVersion),
                     entry.Version ?? "",
                     entry.PkgType ?? "",
                     entry.Category ?? "",
@@ -251,7 +251,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     Ps5Bc = row["PS5 BC"]?.ToString() ?? "",
                     Directory = directory,
                     Backported = row["Backported"]?.ToString() ?? "",
-                    LatestUpdate = row["Latest Update"]?.ToString() ?? "",
+                    LatestUpdate = SafeCell(row, "Latest Update"),
                     FileLastWriteTimeUtc = lastWriteTime
                 });
             }
@@ -281,6 +281,53 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 File.Delete(ManifestFilePath);
                 Logger.LogInformation("Manifest deleted.");
             }
+        }
+
+        /// <summary>
+        /// Safely reads a cell value from a DataRow, returning "" if the column doesn't exist.
+        /// </summary>
+        private static string SafeCell(DataRow row, string columnName)
+        {
+            return row.Table.Columns.Contains(columnName)
+                ? (row[columnName]?.ToString() ?? "")
+                : "";
+        }
+
+        /// <summary>
+        /// Formats a PS4 system version value to "X.XX" display format.
+        /// Handles raw integers, hex-derived strings, and already-formatted values.
+        /// </summary>
+        private static string FormatSystemVersion(string raw)
+        {
+            if (string.IsNullOrEmpty(raw) || raw == "NA" || raw == "0")
+                return raw ?? "";
+
+            // Already formatted (e.g. "4.50", "11.00") — short string with one dot
+            if (raw.Length <= 5 && raw.Contains("."))
+                return raw;
+
+            // Broken format from old code (e.g. "45000.00") — remove dot, take first 3 hex chars
+            string hex;
+            if (raw.Contains("."))
+            {
+                hex = raw.Replace(".", "");
+            }
+            else if (long.TryParse(raw, out long num))
+            {
+                hex = string.Format("{0:X}", num);
+            }
+            else
+            {
+                return raw; // Unknown format, return as-is
+            }
+
+            if (hex.Length >= 3)
+            {
+                string first_three = hex.Substring(0, 3);
+                return first_three.Insert(1, ".");
+            }
+
+            return raw;
         }
 
         /// <summary>

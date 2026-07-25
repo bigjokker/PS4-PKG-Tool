@@ -121,7 +121,8 @@ auto_fetch_update=False";
                 manifestAvailable, manifestEntryCount,
                 directoriesAvailable, directoryCount))
             {
-                prompt.ShowDialog();
+                if (prompt.ShowDialog() != DialogResult.OK)
+                    return; // User clicked X — exit
 
                 switch (prompt.Choice)
                 {
