@@ -1786,6 +1786,10 @@ namespace PS4PKGTool
         {
             this.Invoke((MethodInvoker)delegate
             {
+                this.Enabled = false;
+                PKGGridView.Enabled = false;
+                darkDataGridView2.Enabled = false;
+                SetOperationMenusEnabled(false);
                 toolStripProgressBar1.Visible = true;
                 toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
                 toolStripProgressBar1.Value = 0;
@@ -1798,7 +1802,7 @@ namespace PS4PKGTool
                 try
                 {
                     var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-                    pkgFiles = Directory.GetFiles(folderPath, "*.PKG", searchOption).ToList();
+                    pkgFiles = Directory.EnumerateFiles(folderPath, "*.PKG", searchOption).ToList();
                 }
                 catch (UnauthorizedAccessException ex)
                 {
@@ -1843,49 +1847,55 @@ namespace PS4PKGTool
                     this.Invoke((MethodInvoker)delegate { PKGGridView.DataSource = dt; });
                 }
 
+                // ── Pre-compute loop-invariant data ────────────────
+                var verRegex2 = new Regex(@"^0+(?=\d+\.)", RegexOptions.Compiled);
+                var imgCvt2 = new ImageConverter();
+                var regionIconCache = new Dictionary<string, byte[]>
+                {
+                    [PKGRegion.EU] = (byte[])imgCvt2.ConvertTo(Properties.Resources.eu, typeof(byte[])),
+                    [PKGRegion.US] = (byte[])imgCvt2.ConvertTo(Properties.Resources.us, typeof(byte[])),
+                    [PKGRegion.UK] = (byte[])imgCvt2.ConvertTo(Properties.Resources.us, typeof(byte[])),
+                    [PKGRegion.JAPAN] = (byte[])imgCvt2.ConvertTo(Properties.Resources.jp, typeof(byte[])),
+                    [PKGRegion.HONG_KONG] = (byte[])imgCvt2.ConvertTo(Properties.Resources.hk, typeof(byte[])),
+                    [PKGRegion.ASIA] = (byte[])imgCvt2.ConvertTo(Properties.Resources.asia, typeof(byte[])),
+                    [PKGRegion.KOREA] = (byte[])imgCvt2.ConvertTo(Properties.Resources.kr, typeof(byte[])),
+                };
+                bool chkBackport2 = File.Exists(Backport.BackportInfoFile);
+                dynamic ps5BcCache2 = null;
+                bool usePs5Bc2 = appSettings_.psvr_neo_ps5bc_check && File.Exists(Ps5BcJsonFile);
+                if (usePs5Bc2) { try { ps5BcCache2 = JsonConvert.DeserializeObject(File.ReadAllText(Ps5BcJsonFile)); } catch { usePs5Bc2 = false; } }
+                // HashSet for O(1) duplicate detection
+                var existingSet = new HashSet<string>(PKG.VerifiedPs4PkgList, StringComparer.OrdinalIgnoreCase);
+
                 int added = 0;
                 int processed = 0;
                 foreach (string pkgFile in pkgFiles)
                 {
                     processed++;
-                    this.Invoke((MethodInvoker)delegate
+                    if (processed % 10 == 0 || processed == totalFiles)
                     {
-                        toolStripStatusLabel2.Text = $"Loading PS4 PKG.. ({processed}/{totalFiles})";
-                        toolStripProgressBar1.Increment(1);
-                    });
-                    // Skip if already in the list
-                    if (PKG.VerifiedPs4PkgList.Any(p =>
-                        string.Equals(p, pkgFile, StringComparison.OrdinalIgnoreCase)))
-                        continue;
+                        int p = processed, t = totalFiles;
+                        this.Invoke((MethodInvoker)delegate { toolStripStatusLabel2.Text = $"Loading PS4 PKG.. ({p}/{t})"; toolStripProgressBar1.Increment(10); });
+                    }
+                    // O(1) duplicate check
+                    if (!existingSet.Add(pkgFile)) continue;
 
                     try
                     {
                         PS4_Tools.PKG.SceneRelated.Unprotected_PKG ps4Pkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkgFile);
-
-                        string pkgVersion = "";
-                        string pkgAppVersion = ps4Pkg.Param.APP_VER;
-                        string pattern = @"^0+(?=\d+\.)";
-                        pkgAppVersion = Regex.Replace(pkgAppVersion, pattern, "");
+                        string pkgAppVersion = verRegex2.Replace(ps4Pkg.Param.APP_VER, "");
                         string pkgMinFirmware = ps4Pkg.PKG_Type.ToString() == PKGCategory.ADDON ? "NA" : "";
+                        string pkgVersion = "";
                         foreach (Param_SFO.PARAM_SFO.Table t in ps4Pkg.Param.Tables.ToList())
                         {
                             if (t.Name == "SYSTEM_VER")
                             {
                                 int value = Convert.ToInt32(t.Value);
-                                string hexOutput = String.Format("{0:X}", value);
-                                if (t.Value != "0")
-                                {
-                                    string first_three = hexOutput.Substring(0, 3);
-                                    pkgMinFirmware = first_three.Insert(1, ".");
-                                }
-                                else
-                                    pkgMinFirmware = t.Value;
+                                string hexOutput = string.Format("{0:X}", value);
+                                if (t.Value != "0") { string f3 = hexOutput.Substring(0, 3); pkgMinFirmware = f3.Insert(1, "."); }
+                                else pkgMinFirmware = t.Value;
                             }
-                            if (t.Name == "VERSION")
-                            {
-                                pkgVersion = t.Value;
-                                pkgVersion = Regex.Replace(pkgVersion, pattern, "");
-                            }
+                            if (t.Name == "VERSION") pkgVersion = verRegex2.Replace(t.Value, "");
                         }
                         pkgAppVersion = (pkgAppVersion == string.Empty) ? "NA" : pkgAppVersion;
 
@@ -1895,54 +1905,32 @@ namespace PS4PKGTool
                         string pkgState = ps4Pkg.PKGState.ToString();
                         string pkgType = ps4Pkg.PKG_Type.ToString();
 
-                        // Region icon
                         byte[] pkgRegionIcon = null;
-                        var region = ps4Pkg.Region;
-                        var imageConverter = new ImageConverter();
-                        if (region == PKGRegion.EU) pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.eu, typeof(byte[]));
-                        else if (region == PKGRegion.US) pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.us, typeof(byte[]));
-                        else if (region == PKGRegion.UK) pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.us, typeof(byte[]));
-                        else if (region == PKGRegion.JAPAN) pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.jp, typeof(byte[]));
-                        else if (region == PKGRegion.HONG_KONG) pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.hk, typeof(byte[]));
-                        else if (region == PKGRegion.ASIA) pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.asia, typeof(byte[]));
-                        else if (region == PKGRegion.KOREA) pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.kr, typeof(byte[]));
+                        regionIconCache.TryGetValue(ps4Pkg.Region, out pkgRegionIcon);
 
-                        // PSVR / PS4 Pro / PS5 BC
                         string psVr = "", neoEnable = "", ps5bc = "";
-                        if (appSettings_.psvr_neo_ps5bc_check && File.Exists(Ps5BcJsonFile))
+                        if (usePs5Bc2 && ps5BcCache2 != null && pkgType == PKGCategory.GAME)
                         {
-                            dynamic ps5BcJsonData = JsonConvert.DeserializeObject(File.ReadAllText(Ps5BcJsonFile));
-                            if (pkgType == PKGCategory.GAME)
+                            foreach (var item in ps5BcCache2)
                             {
-                                foreach (var item in ps5BcJsonData)
+                                if (item.npTitleIdshort == ps4Pkg.Param.TITLEID)
                                 {
-                                    if (item.npTitleIdshort == ps4Pkg.Param.TITLEID)
-                                    {
-                                        string psvr = item.psVr;
-                                        string neo = item.neoEnable;
-                                        string ps5bc_ = item.ps5bc;
-                                        psVr = (psvr == "1" || psvr == "2") ? "Yes" : (psvr == "0") ? "No" : (psvr != "null") ? "NA" : "";
-                                        neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (psvr != "null") ? "NA" : "";
-                                        ps5bc = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(ps5bc_.Replace("_", " ").ToLower());
-                                    }
+                                    string psvr = item.psVr, neo = item.neoEnable, pbc = item.ps5bc;
+                                    psVr = (psvr == "1" || psvr == "2") ? "Yes" : (psvr == "0") ? "No" : (psvr != "null") ? "NA" : "";
+                                    neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (psvr != "null") ? "NA" : "";
+                                    ps5bc = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(pbc.Replace("_", " ").ToLower());
                                 }
                             }
-                            else
-                            {
-                                psVr = neoEnable = ps5bc = "-";
-                            }
                         }
+                        else if (usePs5Bc2) { psVr = neoEnable = ps5bc = "-"; }
 
                         // Backport check
-                        string pkgIsBackported = File.Exists(Backport.BackportInfoFile) ? Backport.CheckPKGBackported(pkgFile) ?? "No" : "No";
+                        string pkgIsBackported = chkBackport2 ? Backport.CheckPKGBackported(pkgFile) ?? "No" : "No";
 
-                        this.Invoke((MethodInvoker)delegate
-                        {
-                            dt.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, ps4Pkg.Param.TITLEID, ps4Pkg.Param.ContentID,
-                                pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]",
-                                pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc,
-                                pkgDirectoryName, pkgIsBackported);
-                        });
+                        dt.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, ps4Pkg.Param.TITLEID, ps4Pkg.Param.ContentID,
+                            pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]",
+                            pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc,
+                            pkgDirectoryName, pkgIsBackported);
 
                         // Update type counts
                         switch (ps4Pkg.PKG_Type.ToString())
@@ -1974,6 +1962,12 @@ namespace PS4PKGTool
             };
             bw.RunWorkerCompleted += (s, args) =>
             {
+                this.Invoke((MethodInvoker)delegate
+                {
+                    this.Enabled = true;
+                    PKGGridView.Enabled = true;
+                    darkDataGridView2.Enabled = true;
+                });
                 SaveManifestAfterScan();
                 PopulateGroupedView();
                 SetOperationMenusEnabled(true);
@@ -2071,9 +2065,8 @@ namespace PS4PKGTool
 
                             try
                             {
-                                var pkgFiles = Directory.GetFiles(directory_, "*.PKG", searchOption);
-                                if (pkgFiles.Length > 0)
-                                    PkgFileList.AddRange(pkgFiles);
+                                var pkgFiles = Directory.EnumerateFiles(directory_, "*.PKG", searchOption);
+                                PkgFileList.AddRange(pkgFiles);
                             }
                             catch (UnauthorizedAccessException e)
                             {
@@ -2130,6 +2123,33 @@ namespace PS4PKGTool
                     toolStripProgressBar1.Maximum = PKG.VerifiedPs4PkgList.Count;
                 });
 
+                // ── Pre-compute loop-invariant data ────────────────
+                var verRegex = new Regex(@"^0+(?=\d+\.)", RegexOptions.Compiled);
+                var imageCvt = new ImageConverter();
+                // Pre-convert all region icons once
+                var regionIcons = new Dictionary<string, byte[]>
+                {
+                    [PKGRegion.EU] = (byte[])imageCvt.ConvertTo(Properties.Resources.eu, typeof(byte[])),
+                    [PKGRegion.US] = (byte[])imageCvt.ConvertTo(Properties.Resources.us, typeof(byte[])),
+                    [PKGRegion.UK] = (byte[])imageCvt.ConvertTo(Properties.Resources.us, typeof(byte[])),
+                    [PKGRegion.JAPAN] = (byte[])imageCvt.ConvertTo(Properties.Resources.jp, typeof(byte[])),
+                    [PKGRegion.HONG_KONG] = (byte[])imageCvt.ConvertTo(Properties.Resources.hk, typeof(byte[])),
+                    [PKGRegion.ASIA] = (byte[])imageCvt.ConvertTo(Properties.Resources.asia, typeof(byte[])),
+                    [PKGRegion.KOREA] = (byte[])imageCvt.ConvertTo(Properties.Resources.kr, typeof(byte[])),
+                };
+                bool checkBackport = File.Exists(Backport.BackportInfoFile);
+                // Cache PS5 BC JSON once (not per PKG)
+                dynamic ps5BcJsonCache = null;
+                bool usePs5Bc = appSettings_.psvr_neo_ps5bc_check && File.Exists(Ps5BcJsonFile);
+                if (usePs5Bc)
+                {
+                    try { ps5BcJsonCache = JsonConvert.DeserializeObject(File.ReadAllText(Ps5BcJsonFile)); }
+                    catch { usePs5Bc = false; }
+                }
+
+                // Bulk load: suppress index/constraint maintenance during insert
+                dttemp.BeginLoadData();
+
                 // process every verified pkg and display into gridview control
                 foreach (var pkg in PKG.VerifiedPs4PkgList)
                 {
@@ -2137,7 +2157,7 @@ namespace PS4PKGTool
                     Param_SFO.PARAM_SFO psfo = ps4Pkg.Param;
 
                     string pkgVersion = "";
-                    string pkgAppVersion = psfo.APP_VER;
+                    string pkgAppVersion = verRegex.Replace(psfo.APP_VER, "");
                     string pkgTitleId = ps4Pkg.Param.TITLEID;
                     string pkgFileName = Path.GetFileName(pkg);
                     string pkgDirectoryName = Path.GetDirectoryName(pkg);
@@ -2148,96 +2168,56 @@ namespace PS4PKGTool
                     byte[] pkgRegionIcon = null;
                     string pkgState = ps4Pkg.PKGState.ToString();
                     string pkgType = ps4Pkg.PKG_Type.ToString();
-                    string pkgSize;
-                    string pkgIsBackported = "";
 
-                    // remove leading zero on app_ver
-                    string pattern = @"^0+(?=\d+\.)";
-                    pkgAppVersion = Regex.Replace(pkgAppVersion, pattern, "");
-
-                    // get pkg's minimum system fw
+                    // get pkg's minimum system fw + version
                     foreach (Param_SFO.PARAM_SFO.Table t in ps4Pkg.Param.Tables.ToList())
                     {
                         if (t.Name == "SYSTEM_VER")
                         {
                             int value = Convert.ToInt32(t.Value);
-                            string hexOutput = String.Format("{0:X}", value);
+                            string hexOutput = string.Format("{0:X}", value);
                             if (t.Value != "0")
                             {
                                 string first_three = hexOutput.Substring(0, 3);
                                 pkgSystemVersion = first_three.Insert(1, ".");
                             }
-                            else // SYSTEM_VER = 0 (HB Store.pkg)
-                                pkgSystemVersion = t.Value;
+                            else pkgSystemVersion = t.Value;
                         }
                         if (t.Name == "VERSION")
-                        {
-                            // remove leading zero on app_ver
-                            pkgVersion = t.Value;
-                            pkgVersion = Regex.Replace(pkgVersion, pattern, "");
-                        }
+                            pkgVersion = verRegex.Replace(t.Value, "");
                     }
-
-                    // get latest official update version and minimum firmware
-                    //string updateVersion;
-                    //string updateMinFirmware;
-                    //(updateVersion, updateMinFirmware)= PS4_Tools.PKG.Official.CheckLatestUpdateVersionAndMinFirmware(ps4Pkg.Param.TITLEID);
-
 
                     // get pkg full size
                     long fileSizeBytes = new System.IO.FileInfo(pkg).Length;
-                    pkgSize = ByteSize.FromBytes(fileSizeBytes).ToString();
+                    string pkgSize = ByteSize.FromBytes(fileSizeBytes).ToString();
 
-                    // backward compatible info
-                    if (appSettings_.psvr_neo_ps5bc_check && File.Exists(Ps5BcJsonFile))
+                    // backward compatible info (cached JSON)
+                    if (usePs5Bc && ps5BcJsonCache != null)
                     {
-                        dynamic ps5BcJsonData = JsonConvert.DeserializeObject(File.ReadAllText(Ps5BcJsonFile));
-
                         if (pkgType == PKGCategory.GAME)
                         {
-                            foreach (var item in ps5BcJsonData)
+                            foreach (var item in ps5BcJsonCache)
                             {
                                 if (item.npTitleIdshort == ps4Pkg.Param.TITLEID)
                                 {
-                                    string titleID = item.npTitleIdshort;
                                     string psvr = item.psVr;
                                     string neo = item.neoEnable;
                                     string ps5bc_ = item.ps5bc;
-
-                                    // ps4vr
                                     psVr = (psvr == "1" || psvr == "2") ? "Yes" : (psvr == "0") ? "No" : (psvr != "null") ? "NA" : "";
-
-                                    // ps4 pro enhanced
                                     neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (psvr != "null") ? "NA" : "";
-
-                                    // ps5bc
                                     ps5bc = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(ps5bc_.Replace("_", " ").ToLower());
                                 }
                             }
                         }
-                        else
-                        {
-                            psVr = neoEnable = ps5bc = "-";
-                        }
-                    }
-                    else
-                    {
-                        psVr = neoEnable = ps5bc = "";
+                        else { psVr = neoEnable = ps5bc = "-"; }
                     }
 
-                    // get region from content id
-                    var imageConverter = new ImageConverter();
+                    // get region icon (pre-computed)
                     var region = ps4Pkg.Region;
-                    if (region == PKGRegion.EU) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.eu, typeof(byte[])); }
-                    else if (region == PKGRegion.US) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.us, typeof(byte[])); }
-                    else if (region == PKGRegion.UK) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.us, typeof(byte[])); }
-                    else if (region == PKGRegion.JAPAN) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.jp, typeof(byte[])); }
-                    else if (region == PKGRegion.HONG_KONG) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.hk, typeof(byte[])); }
-                    else if (region == PKGRegion.ASIA) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.asia, typeof(byte[])); }
-                    else if (region == PKGRegion.KOREA) { pkgRegionIcon = (byte[])imageConverter.ConvertTo(Properties.Resources.kr, typeof(byte[])); }
+                    regionIcons.TryGetValue(region, out pkgRegionIcon);
 
-                    // check if pkg is backported
-                    pkgIsBackported = File.Exists(Backport.BackportInfoFile) ? Backport.CheckPKGBackported(pkg) ?? "No" : "No";
+                    // check if pkg is backported (cached file existence)
+                    string pkgIsBackported = checkBackport ? Backport.CheckPKGBackported(pkg) ?? "No" : "No";
 
 
                     // add items to datatable
@@ -2262,23 +2242,29 @@ namespace PS4PKGTool
                     }
 
                     PKG.pkgCount++;
-                    darkStatusStrip1.Invoke((MethodInvoker)delegate
+                    // Batch progress updates every 10 files to reduce UI overhead
+                    if (PKG.pkgCount % 10 == 0 || PKG.pkgCount == PKG.VerifiedPs4PkgList.Count)
                     {
-                        toolStripStatusLabel2.Text = "Loading PS4 PKG.. " + "(" + PKG.pkgCount.ToString() + "/" + PKG.VerifiedPs4PkgList.Count.ToString() + ") ";
-                        toolStripProgressBar1.Increment(1);
-                        PKGGridView.DataSource = dttemp;
-                        for (int i = 9; i <= 11; i++)
+                        darkStatusStrip1.Invoke((MethodInvoker)delegate
                         {
-                            PKGGridView.Columns[i].Visible = appSettings_.psvr_neo_ps5bc_check;
-                        }
-                        foreach (DataGridViewColumn column in PKGGridView.Columns)
-                        {
-                            column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                        }
-                        PKGGridView.Refresh();
-                    });
-
+                            toolStripStatusLabel2.Text = "Loading PS4 PKG.. " + "(" + PKG.pkgCount.ToString() + "/" + PKG.VerifiedPs4PkgList.Count.ToString() + ") ";
+                            toolStripProgressBar1.Increment(10);
+                        });
+                    }
                 }
+                dttemp.EndLoadData();
+
+                // Set DataSource ONCE after loop — NOT inside every iteration
+                darkStatusStrip1.Invoke((MethodInvoker)delegate
+                {
+                    PKGGridView.SuspendLayout();
+                    PKGGridView.DataSource = dttemp;
+                    for (int i = 9; i <= 11; i++)
+                        PKGGridView.Columns[i].Visible = appSettings_.psvr_neo_ps5bc_check;
+                    foreach (DataGridViewColumn column in PKGGridView.Columns)
+                        column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    PKGGridView.ResumeLayout();
+                });
                 #endregion loadPkgProcess1
             };
             bw.RunWorkerCompleted += delegate
@@ -4406,51 +4392,48 @@ namespace PS4PKGTool
 
                 var array = allFilePaths.ToArray();
 
-                PKGTreeView.PathSeparator = @"/";
-
-                PKGTreeView.ImageList = imageList1;
-                TreeNode lastNode = null;
-                string subPathAgg;
-                foreach (string path in array)
+                // Build tree on UI thread in a single batch — not per-node Invoke
+                PKGTreeView.Invoke((MethodInvoker)delegate
                 {
-                    subPathAgg = string.Empty;
-                    string[] segments = path.Split('/');
-                    for (int i = 0; i < segments.Length; i++)
+                    PKGTreeView.BeginUpdate();
+                    PKGTreeView.PathSeparator = @"/";
+                    PKGTreeView.ImageList = imageList1;
+                    TreeNode lastNode = null;
+                    string subPathAgg;
+                    int count = 0;
+                    foreach (string path in array)
                     {
-                        string subPath = segments[i];
-                        subPathAgg += subPath + '/';
-                        TreeNode[] nodes = PKGTreeView.Nodes.Find(subPathAgg, true);
-                        if (nodes.Length == 0)
+                        subPathAgg = string.Empty;
+                        string[] segments = path.Split('/');
+                        for (int i = 0; i < segments.Length; i++)
                         {
-                            if (lastNode == null)
+                            string subPath = segments[i];
+                            subPathAgg += subPath + '/';
+                            TreeNode[] nodes = PKGTreeView.Nodes.Find(subPathAgg, true);
+                            if (nodes.Length == 0)
                             {
-                                PKGTreeView.Invoke((MethodInvoker)delegate
-                                {
-                                    lastNode = PKGTreeView.Nodes.Add(subPathAgg, subPath);
-                                });
+                                lastNode = lastNode == null
+                                    ? PKGTreeView.Nodes.Add(subPathAgg, subPath)
+                                    : lastNode.Nodes.Add(subPathAgg, subPath);
+                                bool isDir = i < segments.Length - 1 || _pkgDirectories.Contains(path);
+                                int iconIdx = isDir ? 0 : IconFor(subPath);
+                                lastNode.ImageIndex = iconIdx;
+                                lastNode.SelectedImageIndex = iconIdx;
                             }
                             else
                             {
-                                PKGTreeView.Invoke((MethodInvoker)delegate
-                                {
-                                    lastNode = lastNode.Nodes.Add(subPathAgg, subPath);
-                                });
+                                lastNode = nodes[0];
+                                lastNode.ImageIndex = 0;
+                                lastNode.SelectedImageIndex = 0;
                             }
-                            toolStripStatusLabel2.Text = $"Reading {subPath}";
-                            bool isDir = i < segments.Length - 1 || _pkgDirectories.Contains(path);
-                            int iconIdx = isDir ? 0 : IconFor(subPath);
-                            lastNode.ImageIndex = iconIdx;
-                            lastNode.SelectedImageIndex = iconIdx;
                         }
-                        else
-                        {
-                            lastNode = nodes[0];
-                            lastNode.ImageIndex = 0;
-                            lastNode.SelectedImageIndex = 0;
-                        }
+                        lastNode = null;
+                        count++;
+                        if (count % 100 == 0)
+                            toolStripStatusLabel2.Text = $"Reading {count}/{array.Length}";
                     }
-                    lastNode = null;
-                }
+                    PKGTreeView.EndUpdate();
+                });
                 toolStripStatusLabel2.Text = $"...";
             };
             bg.RunWorkerCompleted += delegate (object sender, RunWorkerCompletedEventArgs e)
