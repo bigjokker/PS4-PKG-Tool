@@ -4507,7 +4507,7 @@ namespace PS4PKGTool
                 Directory.CreateDirectory(dragDir);
                 string outPath = Path.Combine(dragDir, node.Text);
 
-                Cursor.Current = Cursors.WaitCursor;
+                Cursor.Current = Cursors.Default;
                 try
                 {
                     string inPath = PKG.SelectedPKGFilename;
@@ -4549,36 +4549,46 @@ namespace PS4PKGTool
                 finally
                 {
                     Cursor.Current = Cursors.Default;
-                    try { Directory.Delete(dragDir, true); } catch { }
                 }
             }
         }
 
         private void listView1_ItemDrag(object sender, ItemDragEventArgs e)
         {
-            if (e.Item is ListViewItem item && item.Tag is TreeNodeInfo info && info.Path != "...")
+            if (!CheckOrbisPubCmdExists()) return;
+
+            // Collect all selected items (not just the dragged one)
+            var paths = new List<string>();
+            foreach (ListViewItem item in listView1.SelectedItems)
             {
-                if (info.Node != null && info.Node.Nodes.Count > 0) return; // don't drag directories
-                string path = info.Node?.FullPath ?? info.Path;
-                if (!CheckOrbisPubCmdExists()) return;
+                if (item.Tag is not TreeNodeInfo info || info.Path == "...") continue;
+                if (info.Node != null && info.Node.Nodes.Count > 0) continue; // skip directories
+                paths.Add(info.Node?.FullPath ?? info.Path);
+            }
+            if (paths.Count == 0) return;
 
-                string dragBase = Path.Combine(PS4PKGToolTempDirectory, "dragdrop");
-                string dragDir = Path.Combine(dragBase, Guid.NewGuid().ToString());
-                Directory.CreateDirectory(dragDir);
-                string outPath = Path.Combine(dragDir, item.Text);
+            string dragBase = Path.Combine(PS4PKGToolTempDirectory, "dragdrop");
+            string dragDir = Path.Combine(dragBase, Guid.NewGuid().ToString());
+            Directory.CreateDirectory(dragDir);
 
-                Cursor.Current = Cursors.WaitCursor;
+            try
+            {
+                this.UseWaitCursor = true; Application.DoEvents();
+                string inPath = PKG.SelectedPKGFilename;
+                string renameDir = Path.GetDirectoryName(inPath);
+                string renameTmp = Path.Combine(renameDir, "temp_ps4pkgsafe.pkg");
+                bool renamed = false;
+                try { File.Move(inPath, renameTmp); renamed = true; } catch { }
+                string safeIn = renamed ? renameTmp : inPath;
+
                 try
                 {
-                    string inPath = PKG.SelectedPKGFilename;
-                    string renameDir = Path.GetDirectoryName(inPath);
-                    string renameTmp = Path.Combine(renameDir, "temp_ps4pkgsafe.pkg");
-                    bool renamed = false;
-                    try { File.Move(inPath, renameTmp); renamed = true; } catch { }
-                    string safeIn = renamed ? renameTmp : inPath;
-
-                    try
+                    foreach (string path in paths)
                     {
+                        string fileName = path.Replace("/", @"\");
+                        fileName = Path.GetFileName(fileName);
+                        string outPath = Path.Combine(dragDir, fileName);
+
                         var proc = new Process
                         {
                             StartInfo = new ProcessStartInfo
@@ -4593,24 +4603,29 @@ namespace PS4PKGTool
                         };
                         proc.Start();
                         proc.WaitForExit();
-                    }
-                    finally
-                    {
-                        try { if (renamed && File.Exists(renameTmp)) File.Move(renameTmp, inPath); } catch { }
-                    }
-
-                    if (File.Exists(outPath))
-                    {
-                        var data = new DataObject();
-                        data.SetData(DataFormats.FileDrop, new string[] { outPath });
-                        DoDragDrop(data, DragDropEffects.Copy);
+                        Application.DoEvents(); // keep UI responsive during extraction
                     }
                 }
                 finally
                 {
-                    Cursor.Current = Cursors.Default;
-                    try { Directory.Delete(dragDir, true); } catch { }
+                    try { if (renamed && File.Exists(renameTmp)) File.Move(renameTmp, inPath); } catch { }
                 }
+
+                // Gather all extracted files for the drag operation
+                var extractedFiles = Directory.GetFiles(dragDir, "*", SearchOption.AllDirectories).ToList();
+                if (extractedFiles.Count == 0) return;
+
+                this.UseWaitCursor = false;
+
+                var data = new DataObject();
+                data.SetData(DataFormats.FileDrop, extractedFiles.ToArray());
+                DoDragDrop(data, DragDropEffects.Copy);
+                try { Directory.Delete(dragDir, true); } catch { }
+                return;
+            }
+            finally
+            {
+                Cursor.Current = Cursors.Default;
             }
         }
 
