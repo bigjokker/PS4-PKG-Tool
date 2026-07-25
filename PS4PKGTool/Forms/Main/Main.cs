@@ -4162,7 +4162,13 @@ namespace PS4PKGTool
                     TreeView.currentNode = PKGTreeView.Nodes[0];
                     PKG.NodeFullPath = PKGTreeView.Nodes[0].FullPath;
                     PopulateListView();
-                    listView1.RefreshLayout();
+                    var fixTimer = new System.Windows.Forms.Timer { Interval = 200 };
+                    fixTimer.Tick += (_, _) => {
+                        fixTimer.Stop(); fixTimer.Dispose();
+                        listView1.RefreshLayout();
+                        listView1.Refresh();
+                    };
+                    fixTimer.Start();
                 }
             };
             bg.RunWorkerAsync();
