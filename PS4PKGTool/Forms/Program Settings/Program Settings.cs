@@ -44,7 +44,6 @@ namespace PS4PKGTool
         public ProgramSetting()
         {
             InitializeComponent();
-            ShowThisAtStartup.Visible = false; // PKG Directory Settings form removed — now managed here
         }
 
         private void btnOfficialUpdateDownloadFolder_Click(object sender, EventArgs e)
@@ -102,7 +101,6 @@ namespace PS4PKGTool
             ContentId.Checked = appSettings_.pkgcontentIdColumn;
             TitleId.Checked = appSettings_.pkgtitleIdColumn;
             cbBackported.Checked = appSettings_.pkgBackportColumn;
-            cbLatestUpdate.Checked = appSettings_.pkgLatestUpdateColumn;
             cbAutoFetchUpdate.Checked = appSettings_.AutoFetchUpdate;
             BGM.Checked = appSettings_.PlayBgm;
             #endregion LoadSetting
@@ -182,8 +180,8 @@ namespace PS4PKGTool
             appSettings_.pkgsizeColumn = Size.Checked;
             appSettings_.pkgDirectoryColumn = Location.Checked;
             appSettings_.pkgBackportColumn = cbBackported.Checked;
-            appSettings_.pkgLatestUpdateColumn = cbLatestUpdate.Checked;
             appSettings_.AutoFetchUpdate = cbAutoFetchUpdate.Checked;
+            appSettings_.pkgLatestUpdateColumn = cbAutoFetchUpdate.Checked;
             appSettings_.psvr_neo_ps5bc_check = cbPs5BcCheck.Checked;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;
@@ -401,21 +399,16 @@ namespace PS4PKGTool
             }
         }
 
-        private void btnAddNamingPlaceholder_Click(object sender, EventArgs e)
+        private void PlaceholderButton_Click(object sender, EventArgs e)
         {
-            if (darkComboBoxNamingPlaceholder.Text == string.Empty)
-                return;
-
-            // Get the current cursor position
-            int cursorPosition = tbCustomNamePattern.SelectionStart;
-
-            // Get the text before and after the cursor position
-            string textBeforeCursor = tbCustomNamePattern.Text.Substring(0, cursorPosition);
-            string textAfterCursor = tbCustomNamePattern.Text.Substring(cursorPosition);
-
-            // Insert text
-            string textToInsert = $"{darkComboBoxNamingPlaceholder.Text}";
-            tbCustomNamePattern.Text = textBeforeCursor + textToInsert + textAfterCursor;
+            if (sender is DarkUI.Controls.DarkButton btn && btn.Tag != null)
+            {
+                string tag = btn.Tag.ToString();
+                int pos = tbCustomNamePattern.SelectionStart;
+                tbCustomNamePattern.Text = tbCustomNamePattern.Text.Insert(pos, tag);
+                tbCustomNamePattern.SelectionStart = pos + tag.Length;
+                tbCustomNamePattern.Focus();
+            }
         }
 
         private void tbCustomNamePattern_TextChanged(object sender, EventArgs e)

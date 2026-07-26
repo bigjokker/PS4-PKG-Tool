@@ -77,22 +77,17 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             }
 
             public static string BackportInfoFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\backport.json";
-            private static List<BackportInfo> pkgFileList = new List<BackportInfo>();
-
             public static string CheckPKGBackported(string pkgFile)
             {
-                // Load data from JSON file into pkgFileList
-                string json = File.ReadAllText(BackportInfoFile);
-                pkgFileList = JsonConvert.DeserializeObject<List<BackportInfo>>(json);
-
-                BackportInfo matchingFile = pkgFileList.FirstOrDefault(file => file.FilePath.Equals(pkgFile, StringComparison.OrdinalIgnoreCase));
-
-                if (matchingFile != null)
+                try
                 {
-                    return matchingFile.Backported;
+                    if (!File.Exists(BackportInfoFile)) return null;
+                    string json = File.ReadAllText(BackportInfoFile);
+                    var list = JsonConvert.DeserializeObject<List<BackportInfo>>(json);
+                    var match = list?.FirstOrDefault(f => f.FilePath.Equals(pkgFile, StringComparison.OrdinalIgnoreCase));
+                    return match?.Backported;
                 }
-
-                return null;
+                catch { return null; }
             }
 
             public static void SaveData(DarkDataGridView dataGridView)
@@ -213,7 +208,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             private static int Part_;
             public static int Part
             {
-                get { return Part; }
+                get { return Part_; }
                 set { Part_ = value; }
             }
 
@@ -701,8 +696,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 set { storeitems_ = value; }
             }
 
-            private static byte[] bufferA = new byte[16];
-
             private static List<string> validPS4PKG_ = new List<string>();
             private static List<string> idEntryList_ = new List<string>();
             private static List<string> nameEntryList_ = new List<string>();
@@ -864,14 +857,13 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
             public static byte[] GetPkgHeaderBuffer(string dump)
             {
+                var buf = new byte[16];
                 using (BinaryReader b = new BinaryReader(new FileStream(dump, FileMode.Open, FileAccess.Read)))
                 {
-                    bufferA = new byte[16];
-
                     b.BaseStream.Seek(0x0, SeekOrigin.Begin);
-                    b.Read(bufferA, 0, 16);
-                    return bufferA;
+                    b.Read(buf, 0, 16);
                 }
+                return buf;
             }
 
             public static bool CompareBytes(byte[] bA1, byte[] bA2)
@@ -949,7 +941,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         string finalTitle = filteredTitle.Replace("  -", " -");
                         var fileExists = Path.Combine(bgmPath, finalTitle + ".AT9");
                         if (File.Exists(fileExists))
-                            break;
+                            continue;
                         using (var fileStream = File.OpenRead(pkgFile))
                         {
                             LibOrbisPkg.PKG.PkgReader pkgReader = new LibOrbisPkg.PKG.PkgReader(fileStream);
@@ -991,7 +983,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                                                     entry.Read(entryBytes, 0, entryBytes.Length);
                                                     entryBytes = LibOrbisPkg.PKG.Entry.Decrypt(entryBytes, pkgData.Header.content_id, passcode, meta);
                                                     outputFileStream.Write(entryBytes, 0, (int)meta.DataSize);
-                                                    return;
+                                                    break;
                                                 }
                                             }
 
@@ -1106,18 +1098,17 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     Directory.CreateDirectory(directory);
             }
 
+            private static readonly HttpClient _http = new HttpClient();
+
             public static async Task DownloadFileFromUrlAsync(string url, string saveFilePath)
             {
-                using (HttpClient client = new HttpClient())
-                {
-                    HttpResponseMessage response = await client.GetAsync(url).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
+                HttpResponseMessage response = await _http.GetAsync(url).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
 
-                    string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-                    // Save content to file
-                    File.WriteAllText(saveFilePath, content);
-                }
+                // Save content to file
+                File.WriteAllText(saveFilePath, content);
             }
 
             public static void OpenWebLink(string url)

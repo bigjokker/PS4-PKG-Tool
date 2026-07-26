@@ -17,8 +17,6 @@ namespace PS4PKGTool.Utilities.Settings
         {
             try
             {
-                if (!File.Exists(filePath))
-                    File.Create(filePath);
                 using (StreamWriter writer = new StreamWriter(filePath))
                 {
                     writer.WriteLine($"saved_fbd_last_directory={settings.SavedFbdLastDirectory}");
@@ -80,11 +78,12 @@ namespace PS4PKGTool.Utilities.Settings
                         {
                             if (line.StartsWith("saved_fbd_last_directory="))
                             {
-                                appSettings_.SavedFbdLastDirectory = line.Substring("saved_last_directory=".Length);
+                                appSettings_.SavedFbdLastDirectory = line.Substring("saved_fbd_last_directory=".Length);
                             }
                             if (line.StartsWith("pkg_directories="))
                             {
                                 string directories = line.Substring("pkg_directories=".Length);
+                                appSettings_.PkgDirectories.Clear();
                                 appSettings_.PkgDirectories.AddRange(directories.Split(',').Where(d => !string.IsNullOrEmpty(d)));
                             }
                             else if (line.StartsWith("scan_recursive="))
@@ -131,43 +130,43 @@ namespace PS4PKGTool.Utilities.Settings
                             }
                             else if (line.StartsWith("game_pkg_forecolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.GamePkgForeColor = (Color)converter.ConvertFromString(line.Substring("game_pkg_forecolor=".Length));
+                                if (int.TryParse(line.Substring("game_pkg_forecolor=".Length), out int v))
+                                    appSettings_.GamePkgForeColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("patch_pkg_forecolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.PatchPkgForeColor = (Color)converter.ConvertFromString(line.Substring("patch_pkg_forecolor=".Length));
+                                if (int.TryParse(line.Substring("patch_pkg_forecolor=".Length), out int v))
+                                    appSettings_.PatchPkgForeColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("addon_pkg_forecolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.AddonPkgForeColor = (Color)converter.ConvertFromString(line.Substring("addon_pkg_forecolor=".Length));
+                                if (int.TryParse(line.Substring("addon_pkg_forecolor=".Length), out int v))
+                                    appSettings_.AddonPkgForeColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("app_pkg_forecolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.AppPkgForeColor = (Color)converter.ConvertFromString(line.Substring("app_pkg_forecolor=".Length));
+                                if (int.TryParse(line.Substring("app_pkg_forecolor=".Length), out int v))
+                                    appSettings_.AppPkgForeColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("game_pkg_backcolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.GamePkgBackColor = (Color)converter.ConvertFromString(line.Substring("game_pkg_backcolor=".Length));
+                                if (int.TryParse(line.Substring("game_pkg_backcolor=".Length), out int v))
+                                    appSettings_.GamePkgBackColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("patch_pkg_backcolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.PatchPkgBackColor = (Color)converter.ConvertFromString(line.Substring("patch_pkg_backcolor=".Length));
+                                if (int.TryParse(line.Substring("patch_pkg_backcolor=".Length), out int v))
+                                    appSettings_.PatchPkgBackColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("addon_pkg_backcolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.AddonPkgBackColor = (Color)converter.ConvertFromString(line.Substring("addon_pkg_backcolor=".Length));
+                                if (int.TryParse(line.Substring("addon_pkg_backcolor=".Length), out int v))
+                                    appSettings_.AddonPkgBackColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("app_pkg_backcolor="))
                             {
-                                ColorConverter converter = new ColorConverter();
-                                appSettings_.AppPkgBackColor = (Color)converter.ConvertFromString(line.Substring("app_pkg_backcolor=".Length));
+                                if (int.TryParse(line.Substring("app_pkg_backcolor=".Length), out int v))
+                                    appSettings_.AppPkgBackColor = Color.FromArgb(v);
                             }
                             else if (line.StartsWith("rename_custom_format="))
                             {

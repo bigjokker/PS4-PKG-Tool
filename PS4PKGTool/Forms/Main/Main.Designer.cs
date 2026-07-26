@@ -312,6 +312,14 @@ namespace PS4PKGTool
             tabPage5 = new TabPage();
             panel8 = new Panel();
             darkSectionPanel11 = new DarkUI.Controls.DarkSectionPanel();
+            lblUpdateInfo = new DarkUI.Controls.DarkLabel();
+            lblVersion = new DarkUI.Controls.DarkLabel();
+            lblSysVer = new DarkUI.Controls.DarkLabel();
+            lblUpdType = new DarkUI.Controls.DarkLabel();
+            lblMand = new DarkUI.Controls.DarkLabel();
+            lblRemaster = new DarkUI.Controls.DarkLabel();
+            lblFiles = new DarkUI.Controls.DarkLabel();
+            lblSize = new DarkUI.Controls.DarkLabel();
             dgvUpdate = new DarkUI.Controls.DarkDataGridView();
             darkSectionPanel12 = new DarkUI.Controls.DarkSectionPanel();
             label13 = new DarkUI.Controls.DarkLabel();
@@ -3079,10 +3087,15 @@ namespace PS4PKGTool
             darkLabel6.Text = "Search file:";
             darkLabel6.Visible = false;
             // 
-            // tabPage5
-            // 
+            // tabPage5 — Official Update
+            //
             tabPage5.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            tabPage5.Controls.Add(panel8);
+            tabPage5.Controls.Add(darkSectionPanel11);
+            tabPage5.Controls.Add(lblUpdateInfo);
+            tabPage5.Controls.Add(lblVersion); tabPage5.Controls.Add(lblSysVer);
+            tabPage5.Controls.Add(lblUpdType); tabPage5.Controls.Add(lblMand);
+            tabPage5.Controls.Add(lblRemaster); tabPage5.Controls.Add(lblFiles);
+            tabPage5.Controls.Add(lblSize);
             tabPage5.ForeColor = System.Drawing.Color.Gainsboro;
             tabPage5.Location = new System.Drawing.Point(4, 32);
             tabPage5.Margin = new Padding(3, 2, 3, 2);
@@ -3091,31 +3104,80 @@ namespace PS4PKGTool
             tabPage5.Size = new System.Drawing.Size(951, 556);
             tabPage5.TabIndex = 6;
             tabPage5.Text = "Official Update";
-            // 
-            // panel8
-            // 
-            panel8.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            panel8.Controls.Add(darkSectionPanel11);
-            panel8.Controls.Add(darkSectionPanel12);
-            panel8.Location = new System.Drawing.Point(21, 20);
-            panel8.Margin = new Padding(3, 2, 3, 2);
-            panel8.Name = "panel8";
-            panel8.Size = new System.Drawing.Size(909, 529);
-            panel8.TabIndex = 112;
-            // 
+            //
+            // lblUpdateInfo — instruction text
+            //
+            lblUpdateInfo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            lblUpdateInfo.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblUpdateInfo.ForeColor = System.Drawing.Color.Silver;
+            lblUpdateInfo.Location = new System.Drawing.Point(12, 10);
+            lblUpdateInfo.Size = new System.Drawing.Size(927, 16);
+            lblUpdateInfo.Text = "Select a Game or Patch PKG to view available updates.";
+            //
+            // Update detail labels — bold field: value format, one horizontal strip
+            //
+            lblVersion.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            lblVersion.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblVersion.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblVersion.Location = new System.Drawing.Point(12, 28);
+            lblVersion.Size = new System.Drawing.Size(140, 16);
+            lblVersion.Text = "Version: ...";
+            //
+            lblSysVer.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            lblSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblSysVer.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblSysVer.Location = new System.Drawing.Point(160, 28);
+            lblSysVer.Size = new System.Drawing.Size(130, 16);
+            lblSysVer.Text = "System: ...";
+            //
+            lblUpdType.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            lblUpdType.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblUpdType.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblUpdType.Location = new System.Drawing.Point(300, 28);
+            lblUpdType.Size = new System.Drawing.Size(100, 16);
+            lblUpdType.Text = "Type: ...";
+            //
+            lblMand.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            lblMand.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblMand.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblMand.Location = new System.Drawing.Point(410, 28);
+            lblMand.Size = new System.Drawing.Size(110, 16);
+            lblMand.Text = "Mandatory: ...";
+            //
+            lblRemaster.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            lblRemaster.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblRemaster.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblRemaster.Location = new System.Drawing.Point(530, 28);
+            lblRemaster.Size = new System.Drawing.Size(110, 16);
+            lblRemaster.Text = "Remaster: ...";
+            //
+            lblFiles.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            lblFiles.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblFiles.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblFiles.Location = new System.Drawing.Point(650, 28);
+            lblFiles.Size = new System.Drawing.Size(80, 16);
+            lblFiles.Text = "Files: ...";
+            //
+            lblSize.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            lblSize.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblSize.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblSize.Location = new System.Drawing.Point(740, 28);
+            lblSize.Size = new System.Drawing.Size(120, 16);
+            lblSize.Text = "Size: ...";
+            //
             // darkSectionPanel11
-            // 
+            //
             darkSectionPanel11.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             darkSectionPanel11.Controls.Add(dgvUpdate);
-            darkSectionPanel11.Location = new System.Drawing.Point(0, 0);
+            darkSectionPanel11.Location = new System.Drawing.Point(12, 50);
             darkSectionPanel11.Margin = new Padding(3, 2, 3, 2);
             darkSectionPanel11.Name = "darkSectionPanel11";
-            darkSectionPanel11.SectionHeader = "Official Update Part List";
-            darkSectionPanel11.Size = new System.Drawing.Size(909, 388);
+            darkSectionPanel11.SectionHeader = "Update Package Files";
+            darkSectionPanel11.Size = new System.Drawing.Size(927, 496);
             darkSectionPanel11.TabIndex = 109;
-            // 
+            //
             // dgvUpdate
-            // 
+            //
             dgvUpdate.AllowUserToAddRows = false;
             dgvUpdate.AllowUserToDeleteRows = false;
             dgvUpdate.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -3128,156 +3190,8 @@ namespace PS4PKGTool
             dgvUpdate.ReadOnly = true;
             dgvUpdate.RowTemplate.Height = 23;
             dgvUpdate.ScrollBars = ScrollBars.Horizontal;
-            dgvUpdate.Size = new System.Drawing.Size(907, 362);
+            dgvUpdate.Size = new System.Drawing.Size(925, 484);
             dgvUpdate.TabIndex = 108;
-            // 
-            // darkSectionPanel12
-            // 
-            darkSectionPanel12.Controls.Add(label13);
-            darkSectionPanel12.Controls.Add(label14);
-            darkSectionPanel12.Controls.Add(label15);
-            darkSectionPanel12.Controls.Add(label16);
-            darkSectionPanel12.Controls.Add(label17);
-            darkSectionPanel12.Controls.Add(label18);
-            darkSectionPanel12.Controls.Add(label19);
-            darkSectionPanel12.Controls.Add(labelRemaster);
-            darkSectionPanel12.Controls.Add(label21);
-            darkSectionPanel12.Controls.Add(labelUpdateType);
-            darkSectionPanel12.Controls.Add(labelMandatory);
-            darkSectionPanel12.Controls.Add(labelPKGdigest);
-            darkSectionPanel12.Controls.Add(label5);
-            darkSectionPanel12.Controls.Add(label12);
-            darkSectionPanel12.Controls.Add(label9);
-            darkSectionPanel12.Controls.Add(label11);
-            darkSectionPanel12.Controls.Add(label4);
-            darkSectionPanel12.Controls.Add(label10);
-            darkSectionPanel12.Controls.Add(label7);
-            darkSectionPanel12.Controls.Add(labelSystemReq);
-            darkSectionPanel12.Controls.Add(label6);
-            darkSectionPanel12.Controls.Add(labelUpdateVersion);
-            darkSectionPanel12.Controls.Add(labelTotalSize);
-            darkSectionPanel12.Controls.Add(labelTotalFile);
-            darkSectionPanel12.Dock = DockStyle.Bottom;
-            darkSectionPanel12.Location = new System.Drawing.Point(0, 411);
-            darkSectionPanel12.Margin = new Padding(3, 2, 3, 2);
-            darkSectionPanel12.Name = "darkSectionPanel12";
-            darkSectionPanel12.SectionHeader = "Update Summary";
-            darkSectionPanel12.Size = new System.Drawing.Size(909, 118);
-            darkSectionPanel12.TabIndex = 113;
-            // 
-            // label13
-            // 
-            label13.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label13.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label13.ForeColor = System.Drawing.Color.Silver;
-            label13.Location = new System.Drawing.Point(269, 36);
-            label13.Name = "label13";
-            label13.Size = new System.Drawing.Size(61, 15);
-            label13.TabIndex = 110;
-            label13.Text = "Remaster";
-            // 
-            // label14
-            // 
-            label14.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label14.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label14.ForeColor = System.Drawing.Color.Silver;
-            label14.Location = new System.Drawing.Point(269, 51);
-            label14.Name = "label14";
-            label14.Size = new System.Drawing.Size(76, 15);
-            label14.TabIndex = 107;
-            label14.Text = "Update type";
-            // 
-            // label15
-            // 
-            label15.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label15.ForeColor = System.Drawing.Color.Silver;
-            label15.Location = new System.Drawing.Point(413, 81);
-            label15.Name = "label15";
-            label15.Size = new System.Drawing.Size(10, 15);
-            label15.TabIndex = 118;
-            label15.Text = ":";
-            // 
-            // label16
-            // 
-            label16.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label16.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label16.ForeColor = System.Drawing.Color.Silver;
-            label16.Location = new System.Drawing.Point(269, 66);
-            label16.Name = "label16";
-            label16.Size = new System.Drawing.Size(90, 15);
-            label16.TabIndex = 108;
-            label16.Text = "Package digest";
-            // 
-            // label17
-            // 
-            label17.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label17.ForeColor = System.Drawing.Color.Silver;
-            label17.Location = new System.Drawing.Point(413, 66);
-            label17.Name = "label17";
-            label17.Size = new System.Drawing.Size(10, 15);
-            label17.TabIndex = 117;
-            label17.Text = ":";
-            // 
-            // label18
-            // 
-            label18.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label18.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            label18.ForeColor = System.Drawing.Color.Silver;
-            label18.Location = new System.Drawing.Point(269, 81);
-            label18.Name = "label18";
-            label18.Size = new System.Drawing.Size(109, 15);
-            label18.TabIndex = 109;
-            label18.Text = "Mandatory update";
-            // 
-            // label19
-            // 
-            label19.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label19.ForeColor = System.Drawing.Color.Silver;
-            label19.Location = new System.Drawing.Point(413, 51);
-            label19.Name = "label19";
-            label19.Size = new System.Drawing.Size(10, 15);
-            label19.TabIndex = 116;
-            label19.Text = ":";
-            // 
-            // labelRemaster
-            // 
-            labelRemaster.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelRemaster.ForeColor = System.Drawing.Color.Silver;
-            labelRemaster.Location = new System.Drawing.Point(424, 36);
-            labelRemaster.Name = "labelRemaster";
-            labelRemaster.Size = new System.Drawing.Size(16, 15);
-            labelRemaster.TabIndex = 111;
-            labelRemaster.Text = "...";
-            // 
-            // label21
-            // 
-            label21.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            label21.ForeColor = System.Drawing.Color.Silver;
-            label21.Location = new System.Drawing.Point(413, 36);
-            label21.Name = "label21";
-            label21.Size = new System.Drawing.Size(10, 15);
-            label21.TabIndex = 115;
-            label21.Text = ":";
-            // 
-            // labelUpdateType
-            // 
-            labelUpdateType.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelUpdateType.ForeColor = System.Drawing.Color.Silver;
-            labelUpdateType.Location = new System.Drawing.Point(424, 51);
-            labelUpdateType.Name = "labelUpdateType";
-            labelUpdateType.Size = new System.Drawing.Size(16, 15);
-            labelUpdateType.TabIndex = 112;
-            labelUpdateType.Text = "...";
-            // 
-            // labelMandatory
-            // 
-            labelMandatory.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            labelMandatory.ForeColor = System.Drawing.Color.Silver;
-            labelMandatory.Location = new System.Drawing.Point(424, 81);
-            labelMandatory.Name = "labelMandatory";
-            labelMandatory.Size = new System.Drawing.Size(16, 15);
-            labelMandatory.TabIndex = 114;
-            labelMandatory.Text = "...";
             // 
             // labelPKGdigest
             // 
@@ -3715,6 +3629,8 @@ namespace PS4PKGTool
         private ColumnHeader columnHeader10;
         private TabPage tabPage5;
         private Panel panel8;
+        private DarkUI.Controls.DarkLabel lblUpdateInfo;
+        private DarkUI.Controls.DarkLabel lblVersion, lblSysVer, lblUpdType, lblMand, lblRemaster, lblFiles, lblSize;
         private DarkUI.Controls.DarkDataGridView dgvUpdate;
         private Panel panel6;
         private DarkUI.Controls.DarkButton darkButton3;

@@ -266,6 +266,23 @@ namespace PS4PKGTool
             catch { }
         }
 
+        private static void SafeMoveDirectory(string src, string dst)
+        {
+            try { Directory.Move(src, dst); }
+            catch (IOException)
+            {
+                // Cross-volume move fails — fall back to copy+delete
+                foreach (string f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+                {
+                    string rel = f.Substring(src.Length).TrimStart('\\', '/');
+                    string target = Path.Combine(dst, rel);
+                    Directory.CreateDirectory(Path.GetDirectoryName(target) ?? dst);
+                    File.Copy(f, target, true);
+                }
+                Directory.Delete(src, true);
+            }
+        }
+
         private string GroupByColumn =>
             cbGroupBy.SelectedItem?.ToString() ?? "Category";
 
@@ -346,10 +363,12 @@ namespace PS4PKGTool
         private async void Form1_Load(object sender, EventArgs e)
         {
             Log("App started.");
-            await Task.Run(() =>
+            try
             {
-                WindowState = FormWindowState.Maximized;
-                this.Text = "PS4 PKG Tool " + ApplicationVersion;
+            WindowState = FormWindowState.Maximized;
+            this.Text = "PS4 PKG Tool " + ApplicationVersion;
+                await Task.Run(() =>
+            {
                 Logger.LogInformation("Selected directory: ");
 
                 foreach (var folder in appSettings_.PkgDirectories)
@@ -371,28 +390,20 @@ namespace PS4PKGTool
                 {
                     this.Enabled = false;
 
-                    // If BGM playing, stop it
-                    while (BGM.isBGMPlaying)
+                    // If BGM playing, stop it (with timeout safety)
+                    int bgmAttempts = 0;
+                    while (BGM.isBGMPlaying && bgmAttempts++ < 10)
                     {
                         BGM.isBGMPlaying = false;
-                        BGM.At9Player.Stop();
+                        try { BGM.At9Player.Stop(); } catch { break; }
                     }
 
-                    // Warn if configured directories are missing
-                    var missingDirs = GetMissingDirectories();
-                    if (missingDirs.Count > 0)
-                    {
-                        ShowWarning("Some configured PKG directories do not exist:\n" +
-                            string.Join("\n", missingDirs) +
-                            "\n\nOpen Program Settings to reconfigure.", true);
-                    }
-
-                    // Disable selection changed event
-                    //PKGListGridView.SelectionChanged -= PKGListGridView_SelectionChanged;
+                    // Note: missing directory warnings are shown in PostPkgLoad after scan completes,
+                    // so we don't show them here to avoid double prompts.
 
                     // Update UI
-                    PKGGridView.Enabled = false; // Disable DataGridView during listing pkg
-                    darkDataGridView2.Enabled = false; // Disable DataGridView during listing pkg
+                    PKGGridView.Enabled = false;
+                    darkDataGridView2.Enabled = false;
 
                     Logger.LogInformation("Scanning PKG...");
 
@@ -415,6 +426,14 @@ namespace PS4PKGTool
                     //LoadPKGListView();
                 });
             });
+            }
+            catch (Exception ex)
+            {
+                Log($"FATAL: App startup failed: {ex.Message}");
+                Logger.LogError($"Form1_Load crashed: {ex}");
+                MessageBox.Show($"Startup failed:\n{ex.Message}", "Fatal Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private BackgroundWorker _detailWorker;
@@ -548,14 +567,14 @@ namespace PS4PKGTool
                                     long sizes = Convert.ToInt64(item.Tag.Package.Size);
                                     var size_final = ByteSize.FromBytes(sizes).ToString();
 
-                                    labelSystemReq.Text = version;
-                                    labelUpdateVersion.Text = item.Tag.Package.Version;
-                                    labelTotalFile.Text = item.Tag.Package.Manifest_item.pieces.Count.ToString();
-                                    labelTotalSize.Text = size_final;
-                                    labelUpdateType.Text = ToTitleCase(item.Tag.Package.Type);
-                                    labelRemaster.Text = ToTitleCase(item.Tag.Package.Remaster);
-                                    labelPKGdigest.Text = item.Tag.Package.Digest;
-                                    labelMandatory.Text = ToTitleCase(item.Tag.Mandatory);
+                                    lblUpdateInfo.Text = "";
+                                    lblVersion.Text = $"Version: {item.Tag.Package.Version}";
+                                    lblSysVer.Text = $"System: {version}";
+                                    lblUpdType.Text = $"Type: {ToTitleCase(item.Tag.Package.Type)}";
+                                    lblMand.Text = $"Mandatory: {ToTitleCase(item.Tag.Mandatory)}";
+                                    lblRemaster.Text = $"Remaster: {ToTitleCase(item.Tag.Package.Remaster)}";
+                                    lblFiles.Text = $"Files: {item.Tag.Package.Manifest_item.pieces.Count}";
+                                    lblSize.Text = $"Size: {size_final}";
 
                                     int part = 0;
                                     foreach (var manifestItem in item.Tag.Package.Manifest_item.pieces)
@@ -1365,22 +1384,15 @@ namespace PS4PKGTool
 
         private void CopyContentID()
         {
-            var pkgList = GetSelectedPKGDirectoryList(PKGSelectionType.SELECTED);
-
-            if (pkgList.Count < 1)
+            var ids = new List<string>();
+            foreach (DataGridViewRow row in PKGGridView.SelectedRows)
             {
-                ShowError("No PKG file selected.", false);
+                string cid = row.Cells[3].Value?.ToString();
+                if (!string.IsNullOrEmpty(cid)) ids.Add(cid.Replace(":", " -"));
             }
-
-            string formattedContentId = "";
-            foreach (var pkg in pkgList)
-            {
-                PS4_Tools.PKG.SceneRelated.Unprotected_PKG selectedPackage = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
-                string titleIdFilter = selectedPackage.Param.ContentID.Replace(":", " -");
-                formattedContentId += titleIdFilter.Replace("  -", " -") + "\n";
-            }
-            Clipboard.SetText(formattedContentId);
-            ShowInformation("CONTENT_ID copied to clipboard", true);
+            if (ids.Count == 0) { ShowError("No PKG file selected.", false); return; }
+            Clipboard.SetText(string.Join("\n", ids));
+            ShowInformation($"{ids.Count} Content ID(s) copied to clipboard.", true);
         }
 
         private void toolStripMenuItem76_Click(object sender, EventArgs e)
@@ -1390,33 +1402,22 @@ namespace PS4PKGTool
 
         private void RefreshPkgList()
         {
-            if (PKGGridView.DataSource != null)
-            {
-                flatTabControl1.SelectedIndex = 0;
-                Logger.LogInformation("Refreshing PKG list..");
-                this.Invoke((MethodInvoker)delegate
-                {
-                    this.Enabled = false;
-                    System.Threading.Thread.Sleep(1000);
+            flatTabControl1.SelectedIndex = 0;
+            Logger.LogInformation("Refreshing PKG list..");
+            Log("Refreshing PKG list...");
 
-                    while (PKGGridView.DataSource != null)
-                    {
-                        this.PKGGridView.DataSource = null;
-                        this.PKGGridView.Rows.Clear();
-                        PKGGridView.Rows.Clear();
-                    }
+            // Clear existing data
+            PKGGridView.DataSource = null;
+            darkDataGridView2.DataSource = null;
+            FinalizePkgProcess = true;
 
-                    while (darkDataGridView2.DataSource != null)
-                    {
-                        this.darkDataGridView2.DataSource = null;
-                        this.darkDataGridView2.Rows.Clear();
-                        darkDataGridView2.Rows.Clear();
-                    }
+            // Keep existing source (manifest vs directory), just re-scan
+            Helper.LaunchEmpty = false;
 
-                    FinalizePkgProcess = true;
-                    LoadPKGGridView();
-                });
-            }
+            this.Enabled = false;
+            PKGGridView.Enabled = false;
+            darkDataGridView2.Enabled = false;
+            LoadPKGGridView();
         }
 
         private void toolStripMenuItem78_Click(object sender, EventArgs e)
@@ -1612,24 +1613,15 @@ namespace PS4PKGTool
 
         private void CopyTitleID()
         {
-            var pkgList = GetSelectedPKGDirectoryList(PKGSelectionType.SELECTED);
-
-            if (pkgList.Count < 1)
+            var ids = new List<string>();
+            foreach (DataGridViewRow row in PKGGridView.SelectedRows)
             {
-                ShowError("No PKG file selected.", false);
+                string tid = row.Cells[2].Value?.ToString();
+                if (!string.IsNullOrEmpty(tid)) ids.Add(tid.Replace(":", " -"));
             }
-            else
-            {
-                string formattedTitleId = string.Join("\n", pkgList.Select(pkg =>
-                {
-                    PS4_Tools.PKG.SceneRelated.Unprotected_PKG selectedPackage = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
-                    string titleIdFilter = selectedPackage.Param.TITLEID.Replace(":", " -");
-                    return titleIdFilter.Replace("  -", " -");
-                }));
-
-                Clipboard.SetText(formattedTitleId);
-                ShowInformation("PKG TITLE_ID copied to clipboard", true);
-            }
+            if (ids.Count == 0) { ShowError("No PKG file selected.", false); return; }
+            Clipboard.SetText(string.Join("\n", ids));
+            ShowInformation($"{ids.Count} Title ID(s) copied to clipboard.", true);
         }
 
         private void CopyID_Click(object sender, EventArgs e)
@@ -1962,7 +1954,7 @@ namespace PS4PKGTool
                                 {
                                     string psvr = item.psVr, neo = item.neoEnable, pbc = item.ps5bc;
                                     psVr = (psvr == "1" || psvr == "2") ? "Yes" : (psvr == "0") ? "No" : (psvr != "null") ? "NA" : "";
-                                    neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (psvr != "null") ? "NA" : "";
+                                    neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (neo != "null") ? "NA" : "";
                                     ps5bc = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(pbc.Replace("_", " ").ToLower());
                                 }
                             }
@@ -2074,9 +2066,8 @@ namespace PS4PKGTool
                             this.Invoke((MethodInvoker)delegate
                             {
                                 PKGGridView.DataSource = dt;
-                                PostPkgLoad();
                             });
-                            return; // Skip directory scan
+                            return; // Skip directory scan — PostPkgLoad runs in RunWorkerCompleted
                         }
                         else
                         {
@@ -2158,7 +2149,8 @@ namespace PS4PKGTool
                         PKG.CompareBytes(bufferA, PKG.PkgHeader2) || PKG.CompareBytes(bufferA, PKG.PkgHeader3) ||
                         PKG.CompareBytes(bufferA, PKG.PkgHeader4))
                     {
-                        PKG.VerifiedPs4PkgList.Add(item);
+                        lock (PKG.VerifiedPs4PkgList)
+                            PKG.VerifiedPs4PkgList.Add(item);
                         //PKG.totalPkg++;
                     }
                 }
@@ -2252,7 +2244,7 @@ namespace PS4PKGTool
                                     string neo = item.neoEnable;
                                     string ps5bc_ = item.ps5bc;
                                     psVr = (psvr == "1" || psvr == "2") ? "Yes" : (psvr == "0") ? "No" : (psvr != "null") ? "NA" : "";
-                                    neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (psvr != "null") ? "NA" : "";
+                                    neoEnable = (neo == "1") ? "Yes" : (neo == "0") ? "No" : (neo != "null") ? "NA" : "";
                                     ps5bc = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(ps5bc_.Replace("_", " ").ToLower());
                                 }
                             }
@@ -2381,7 +2373,7 @@ namespace PS4PKGTool
             if (appSettings_.psvr_neo_ps5bc_check)   { cols.Add(("PSVR", 0)); cols.Add(("PS4 Pro Enhanced", 0)); cols.Add(("PS5 BC", 0)); }
             if (appSettings_.pkgDirectoryColumn)     cols.Add(("Directory", 0));
             if (appSettings_.pkgBackportColumn)      cols.Add(("Backported", 0));
-            if (appSettings_.pkgLatestUpdateColumn)  cols.Add(("Latest Update", 0));
+            if (appSettings_.AutoFetchUpdate)  cols.Add(("Latest Update", 0));
             return cols;
         }
 
@@ -2400,7 +2392,7 @@ namespace PS4PKGTool
             if (appSettings_.psvr_neo_ps5bc_check)   { data.Add(Cell("PSVR")); data.Add(Cell("PS4 Pro Enhanced")); data.Add(Cell("PS5 BC")); }
             if (appSettings_.pkgDirectoryColumn)     data.Add(Cell("Directory"));
             if (appSettings_.pkgBackportColumn)      data.Add(Cell("Backported"));
-            if (appSettings_.pkgLatestUpdateColumn)  data.Add(Cell("Latest Update"));
+            if (appSettings_.AutoFetchUpdate)  data.Add(Cell("Latest Update"));
             return data.ToArray();
         }
 
@@ -2547,12 +2539,16 @@ namespace PS4PKGTool
                 $"{paths.Count} PKG file{(paths.Count == 1 ? "" : "s")} will be permanently deleted.\n\nContinue?");
             if (confirm != DialogResult.Yes) return;
             PKG.isDeletingPkg = true;
+            toolStripProgressBar1.Visible = true;
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+            toolStripStatusLabel2.Text = "Deleting...";
             foreach (var p in paths)
             {
                 try { File.Delete(p); }
                 catch (Exception ex) { Logger.LogError($"Failed to delete {p}: {ex.Message}"); }
             }
             PKG.isDeletingPkg = false;
+            toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
             RefreshPkgList();
         }
 
@@ -2671,34 +2667,41 @@ namespace PS4PKGTool
         {
             if (PKG.VerifiedPs4PkgList.Count == 0)
             {
-                // clear gridview control
-                while (PKGGridView.DataSource != null)
-                {
-                    PKGGridView.DataSource = null;
-                    PKGGridView.Rows.Clear();
-                    PKGGridView.Rows.Clear();
-                }
-                while (darkDataGridView2.DataSource != null)
-                {
-                    darkDataGridView2.DataSource = null;
-                    darkDataGridView2.Rows.Clear();
-                    darkDataGridView2.Rows.Clear();
-                }
+                PKGGridView.DataSource = null;
+                darkDataGridView2.DataSource = null;
                 SetOperationMenusEnabled(false);
-                ShowInformation("No PKG found", true);
-                var missingDirs = GetMissingDirectories();
-                if (missingDirs.Count > 0)
+
+                if (Helper.LoadFromManifest)
                 {
-                    DialogResult result = MessageBoxHelper.DialogResultYesNo(
-                        "No PKG files found. Some configured directories are missing:\n" +
-                        string.Join("\n", missingDirs) +
-                        "\n\nWould you like to open Program Settings to reconfigure?");
+                    var result = DialogResultYesNo(
+                        "Manifest loaded but no PKG files are currently accessible.\n\n" +
+                        "The PKG files may be on a network drive or external storage\n" +
+                        "that is not currently connected.\n\n" +
+                        "Would you like to scan directories instead?");
                     if (result == DialogResult.Yes)
-                        OpenPKGDirectorySettings();
+                    {
+                        Helper.LoadFromManifest = false;
+                        Helper.LaunchEmpty = false;
+                        RefreshPkgList();
+                        return;
+                    }
                 }
                 else
                 {
-                    OpenPKGDirectorySettings();
+                    var missingDirs = GetMissingDirectories();
+                    if (missingDirs.Count > 0)
+                    {
+                        var result = DialogResultYesNo(
+                            "No PKG files found. Some configured directories do not exist:\n" +
+                            string.Join("\n", missingDirs) +
+                            "\n\nWould you like to open Program Settings to reconfigure?");
+                        if (result == DialogResult.Yes)
+                            OpenPKGDirectorySettings();
+                    }
+                    else
+                    {
+                        ShowInformation("No PKG files found in the configured directories.", true);
+                    }
                 }
             }
             else
@@ -2710,6 +2713,7 @@ namespace PS4PKGTool
                 SetDataGridViewCellStyle();
                 PopulateGroupedView();
                 SaveManifestAfterScan();
+                if (appSettings_.AutoFetchUpdate) FetchAllUpdateVersions();
             }
             //PKGListGridView.SelectionChanged += PKGListGridView_SelectionChanged;
             toolStripStatusLabel2.Text = "... ";
@@ -2858,7 +2862,7 @@ namespace PS4PKGTool
                 PKGGridView.Columns[12].Visible = appSettings_.psvr_neo_ps5bc_check;
                 PKGGridView.Columns[13].Visible = appSettings_.pkgDirectoryColumn;
                 PKGGridView.Columns[14].Visible = appSettings_.pkgBackportColumn;
-                PKGGridView.Columns[15].Visible = appSettings_.pkgLatestUpdateColumn;
+                PKGGridView.Columns[15].Visible = appSettings_.AutoFetchUpdate;
             }
             catch { }
         }
@@ -2984,6 +2988,9 @@ namespace PS4PKGTool
             if (dialog == DialogResult.Yes)
             {
                 PKG.isDeletingPkg = true;
+                toolStripProgressBar1.Visible = true;
+                toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+                toolStripStatusLabel2.Text = "Deleting...";
                 try
                 {
                     foreach (var pkg in pkgList)
@@ -3011,6 +3018,7 @@ namespace PS4PKGTool
 
                     PKG.SelectedPKGFilename = ""; // Reset
                     labelDisplayTotalPKG.Text = "Displaying " + PKG.VerifiedPs4PkgList.Count.ToString() + " PS4 PKG";
+                    toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
                     ShowInformation("PKG file deleted.", true);
                     PKG.isDeletingPkg = false;
                 }
@@ -4124,6 +4132,7 @@ namespace PS4PKGTool
 
                 //read file entry table
                 uint entry_count = IO.In.SeekNReadUInt32(0x10);
+                if (entry_count == 0) { IO.Close(); return; }
                 uint file_table_offset = IO.In.SeekNReadUInt32(0x18);
                 uint padded_size;
 
@@ -4500,6 +4509,9 @@ namespace PS4PKGTool
                 EnableControls(darkMenuStrip1);
                 EnableControls(PKGTreeView);
 
+                toolStripStatusLabel2.Text = "...";
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Value = 0;
                 // Select the first root node (Image0) so the ListView populates
                 if (PKGTreeView.Nodes.Count > 0)
                 {
@@ -4610,24 +4622,24 @@ namespace PS4PKGTool
                         try { File.Move(origPath, tempPath); renamed = true; } catch { }
                         string pkgPath = renamed ? tempPath : origPath;
 
-                        Process extract = new Process
+                        try
                         {
-                            StartInfo = new ProcessStartInfo
+                            Process extract = new Process
                             {
-                                FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
-                                Arguments = $"img_extract --passcode {tbPasscode.Text} \"{pkgPath}\" \"{tempOutputDir}\"",
-                                UseShellExecute = false,
-                                RedirectStandardOutput = true,
-                                CreateNoWindow = true
-                            }
-                        };
-                        extract.Start();
-                        extract.WaitForExit();
-                        string extractOutput = extract.StandardOutput.ReadToEnd();
+                                StartInfo = new ProcessStartInfo
+                                {
+                                    FileName = PS4PKGToolTempDirectory + "orbis-pub-cmd.exe",
+                                    Arguments = $"img_extract --passcode {tbPasscode.Text} \"{pkgPath}\" \"{tempOutputDir}\"",
+                                    UseShellExecute = false,
+                                    RedirectStandardOutput = true,
+                                    CreateNoWindow = true
+                                }
+                            };
+                            extract.Start();
+                            extract.WaitForExit();
+                            string extractOutput = extract.StandardOutput.ReadToEnd();
 
-                        try { if (renamed && File.Exists(tempPath)) File.Move(tempPath, origPath); } catch { }
-
-                        int exitCode = extract.ExitCode;
+                            int exitCode = extract.ExitCode;
                         if (_extractWorker.CancellationPending)
                         {
                             // User cancelled — exitCode will be -1 (process killed), not a real failure
@@ -4648,7 +4660,7 @@ namespace PS4PKGTool
                                     string dest = Path.Combine(extractLocation, Path.GetFileName(entry));
                                     try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch { }
                                     if (Directory.Exists(entry))
-                                        Directory.Move(entry, dest);
+                                        SafeMoveDirectory(entry, dest);
                                     else
                                     {
                                         try { if (File.Exists(dest)) File.Delete(dest); } catch { }
@@ -4660,8 +4672,30 @@ namespace PS4PKGTool
                             this.Invoke(() => ShowInformation($"PKG extracted.", false));
                         }
 
-                        // Clean up temp output dir
-                        try { if (Directory.Exists(tempOutputDir)) Directory.Delete(tempOutputDir, true); } catch { }
+                            // Clean up temp output dir
+                            try { if (Directory.Exists(tempOutputDir)) Directory.Delete(tempOutputDir, true); } catch { }
+                        }
+                        finally
+                        {
+                            // ALWAYS restore original filename
+                            if (renamed && File.Exists(tempPath))
+                            {
+                                try
+                                {
+                                    if (File.Exists(origPath)) File.Delete(origPath);
+                                    File.Move(tempPath, origPath);
+                                }
+                                catch (Exception rex)
+                                {
+                                    Log($"CRITICAL: Failed to restore PKG from temp! File is at: {tempPath}");
+                                    Logger.LogError($"Failed to rename back {tempPath} → {origPath}: {rex.Message}");
+                                    this.Invoke(() => ShowError(
+                                        $"CRITICAL: Could not restore original PKG filename!\n\n" +
+                                        $"Your file has been renamed to:\n{tempPath}\n\n" +
+                                        $"Please rename it back manually to:\n{Path.GetFileName(origPath)}", true));
+                                }
+                            }
+                        }
                     };
                     _extractWorker.RunWorkerCompleted += (sender, e) =>
                     {
@@ -4814,12 +4848,10 @@ namespace PS4PKGTool
                     extract.WaitForExit();
                     string extractOutput = extract.StandardOutput.ReadToEnd();
 
-                    try { if (wasRenamed && File.Exists(renameTmp)) File.Move(renameTmp, in_path); } catch { }
-
-                    if (bgw.CancellationPending) break;
-
-                    int exitCode = extract.ExitCode;
-                    if (exitCode == 0)
+                    try
+                    {
+                        int exitCode = extract.ExitCode;
+                        if (exitCode == 0)
                     {
                         // Move extracted files from ASCII temp dir to actual output path
                         if (isDirectory)
@@ -4831,7 +4863,7 @@ namespace PS4PKGTool
                                     string dest = Path.Combine(out_path, Path.GetFileName(entry));
                                     try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch { }
                                     if (Directory.Exists(entry))
-                                        Directory.Move(entry, dest);
+                                        SafeMoveDirectory(entry, dest);
                                     else
                                     {
                                         try { if (File.Exists(dest)) File.Delete(dest); } catch { }
@@ -4852,13 +4884,29 @@ namespace PS4PKGTool
                             }
                         }
                         Logger.LogInformation($"File extracted to \"{out_path}\"");
-                        this.Invoke(() => ShowInformation($"Extracted to:\n{out_path}", false));
                     }
                     else
                     {
                         string errMsg = FormatOrbisError(extractOutput);
                         Logger.LogError($"orbis-pub-cmd failed for \"{targ_path}\":\n{errMsg}");
                         this.Invoke(() => ShowError($"orbis-pub-cmd error:\n{errMsg}", true));
+                    }
+                    }
+                    finally
+                    {
+                        if (wasRenamed && File.Exists(renameTmp))
+                        {
+                            try
+                            {
+                                if (File.Exists(in_path)) File.Delete(in_path);
+                                File.Move(renameTmp, in_path);
+                            }
+                            catch (Exception rex)
+                            {
+                                Log($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
+                                Logger.LogError($"Rename-back failed: {renameTmp} → {in_path}: {rex.Message}");
+                            }
+                        }
                     }
 
                     // Clean up temp dir
@@ -4884,6 +4932,11 @@ namespace PS4PKGTool
                 {
                     Logger.LogError($"Extraction failed: {e.Error.Message}");
                     ShowError($"Extraction failed:\n{e.Error.Message}", true);
+                }
+                else
+                {
+                    Log($"Extraction complete: {nodeList.Count} item(s)");
+                    ShowInformation($"Extraction complete: {nodeList.Count} item(s) extracted.", false);
                 }
             };
             bgw.RunWorkerAsync();
@@ -4936,7 +4989,19 @@ namespace PS4PKGTool
             }
             finally
             {
-                try { if (wasRenamed && File.Exists(renameTmp)) File.Move(renameTmp, inPath); } catch { }
+                if (wasRenamed && File.Exists(renameTmp))
+                {
+                    try
+                    {
+                        if (File.Exists(inPath)) File.Delete(inPath);
+                        File.Move(renameTmp, inPath);
+                    }
+                    catch (Exception rex)
+                    {
+                        Log($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
+                        Logger.LogError($"Rename-back failed: {renameTmp} → {inPath}: {rex.Message}");
+                    }
+                }
             }
         }
 
@@ -4944,6 +5009,8 @@ namespace PS4PKGTool
         {
             if (e.Button == MouseButtons.Right)
             {
+                var node = PKGTreeView.GetNodeAt(e.Location);
+                if (node != null) PKGTreeView.SelectedNode = node;
                 contextMenuExtractNode.Show(PKGTreeView, e.Location);
             }
         }
@@ -5283,6 +5350,9 @@ namespace PS4PKGTool
             // Clear the nodes of the PKGTreeView control
             PKGTreeView.Nodes.Clear();
             listView1.Items.Clear();
+            toolStripStatusLabel2.Text = "Listing PKG files...";
+            toolStripProgressBar1.Visible = true;
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
             // Populate PKG data to the tree view
             PopulatePKGDataToTreeView();
         }
@@ -5475,7 +5545,19 @@ namespace PS4PKGTool
             }
             finally
             {
-                try { if (renamed && File.Exists(renameTmp)) File.Move(renameTmp, origPath); } catch { }
+                if (renamed && File.Exists(renameTmp))
+                {
+                    try
+                    {
+                        if (File.Exists(origPath)) File.Delete(origPath);
+                        File.Move(renameTmp, origPath);
+                    }
+                    catch (Exception rex)
+                    {
+                        Log($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
+                        Logger.LogError($"Rename-back failed: {renameTmp} → {origPath}: {rex.Message}");
+                    }
+                }
             }
         }
 
@@ -6224,9 +6306,8 @@ namespace PS4PKGTool
                     if (numNext == SortOrder.Descending) sorted.Reverse();
                     var newTable = dataTable.Clone();
                     foreach (var r in sorted) newTable.Rows.Add(r.ItemArray);
-                    PKGGridView.SelectionChanged -= PKGListGridView_SelectionChanged;
                     PKGGridView.DataSource = newTable;
-                    PKGGridView.SelectionChanged += PKGListGridView_SelectionChanged;
+                    ScrollToTop();
                     UpdateDataGridViewColumnVisibility();
                     PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection = numNext;
                     return;
@@ -6243,15 +6324,24 @@ namespace PS4PKGTool
                 if (next == SortOrder.Descending) sortedRows.Reverse();
                 var sortedTable = dataTable.Clone();
                 foreach (var r in sortedRows) sortedTable.Rows.Add(r.ItemArray);
-                PKGGridView.SelectionChanged -= PKGListGridView_SelectionChanged;
                 PKGGridView.DataSource = sortedTable;
-                PKGGridView.SelectionChanged += PKGListGridView_SelectionChanged;
+                ScrollToTop();
                 PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection = next;
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error sorting column: {ex.Message}");
                 ShowError($"Error sorting column: {ex.Message}", true);
+            }
+        }
+
+        private void ScrollToTop()
+        {
+            if (PKGGridView.Rows.Count > 0)
+            {
+                PKGGridView.Rows[0].Selected = true;
+                PKGGridView.CurrentCell = PKGGridView.Rows[0].Cells[0];
+                try { PKGGridView.FirstDisplayedScrollingRowIndex = 0; } catch { }
             }
         }
 
@@ -6490,6 +6580,7 @@ namespace PS4PKGTool
 
         private void listView1_ItemActivate(object sender, EventArgs e)
         {
+            if (listView1.SelectedItems.Count == 0) return;
             var selectedItem = (TreeNodeInfo)listView1.SelectedItems[0].Tag;
 
             if (selectedItem.Path == "...")
