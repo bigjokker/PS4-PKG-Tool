@@ -94,6 +94,21 @@ namespace PS4PKGTool
         public Main()
         {
             InitializeComponent();
+
+            // Tag-bind image/icon extraction menu items for data-driven dispatch
+            globalExtractImagesAndIconToolStripMenuItem1.Tag = $"{ImageIconExtractionType.ALL}|{PKGSelectionType.ALL}";
+            globalExtractImagesAndIconToolStripMenuItem2.Tag = $"{ImageIconExtractionType.ALL}|{PKGSelectionType.ALL}";
+            globalExtractImageOnlyToolStripMenuItem1.Tag     = $"{ImageIconExtractionType.IMAGE}|{PKGSelectionType.ALL}";
+            globalExtractImageOnlyToolStripMenuItem2.Tag     = $"{ImageIconExtractionType.IMAGE}|{PKGSelectionType.ALL}";
+            globalExtractIconOnlyToolStripMenuItem1.Tag      = $"{ImageIconExtractionType.ICON}|{PKGSelectionType.ALL}";
+            globalExtractIconOnlyToolStripMenuItem2.Tag      = $"{ImageIconExtractionType.ICON}|{PKGSelectionType.ALL}";
+            selectedExtractImagesAndIconToolStripMenuItem1.Tag = $"{ImageIconExtractionType.ALL}|{PKGSelectionType.SELECTED}";
+            selectedExtractImagesAndIconToolStripMenuItem2.Tag = $"{ImageIconExtractionType.ALL}|{PKGSelectionType.SELECTED}";
+            selectedExtractImageOnlyToolStripMenuItem1.Tag     = $"{ImageIconExtractionType.IMAGE}|{PKGSelectionType.SELECTED}";
+            selectedExtractImageOnlyToolStripMenuItem2.Tag     = $"{ImageIconExtractionType.IMAGE}|{PKGSelectionType.SELECTED}";
+            selectedExtractIconOnlyToolStripMenuItem1.Tag      = $"{ImageIconExtractionType.ICON}|{PKGSelectionType.SELECTED}";
+            selectedExtractIconOnlyToolStripMenuItem2.Tag      = $"{ImageIconExtractionType.ICON}|{PKGSelectionType.SELECTED}";
+
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; CheckForIllegalCrossThreadCalls = false;
@@ -214,7 +229,7 @@ namespace PS4PKGTool
             var glvSep2      = new ToolStripSeparator();
             var glvDelete    = new ToolStripMenuItem("Delete PKG",          null, (_, _) => GlvDeletePkg());
             var glvSep3      = new ToolStripSeparator();
-            var glvExtract   = new ToolStripMenuItem("Extract images/icons",null, (_, _) => GlvExtractImages());
+            var glvExtract   = new ToolStripMenuItem("Save artwork",null, (_, _) => GlvExtractImages());
             contextMenuGLV.Items.AddRange(new ToolStripItem[] {
                 glvRefresh, glvOpenTemp, glvSep1,
                 glvCopyId, glvExplorer, glvChange, glvSep2,
@@ -446,14 +461,14 @@ namespace PS4PKGTool
                     if (Helper.LaunchEmpty)
                     {
                         Logger.LogInformation("Launch Empty — skipping PKG scan.");
-                        this.Invoke((MethodInvoker)delegate
-                        {
+                    this.Invoke((MethodInvoker)(() =>
+                    {
                             this.Enabled = true;
                             PKGGridView.Enabled = true;
                             darkDataGridView2.Enabled = true;
                             SetOperationMenusEnabled(false);
                             toolStripStatusLabel2.Text = "Ready (empty)";
-                        });
+                        }));
                     }
                     else
                     {
@@ -794,7 +809,6 @@ namespace PS4PKGTool
                             pbPIC1.SizeMode = PictureBoxSizeMode.StretchImage;
                             pbPIC1.Image = Helper.Bitmap.BytesToBitmap(pkg.Image2);
                             Helper.Bitmap.pic1.Image = pbPIC1.Image;
-                            pkg.Image2 = null;
                         }
                     }
                     else
@@ -1220,13 +1234,14 @@ namespace PS4PKGTool
         private void ImageIconExtractor(string imageType, List<string> pkgFilesList, string outputDirectory, bool respectiveExtract)
         {
             int countPkg = 0;
+            int total = pkgFilesList.Count;
             foreach (string pkgPath in pkgFilesList)
             {
                 try
                 {
                     PS4_Tools.PKG.SceneRelated.Unprotected_PKG PS4_PKG = PS4_Tools.PKG.SceneRelated.Read_PKG(pkgPath);
                     string finalPath = respectiveExtract
-    ? $"{outputDirectory}\\{PS4_PKG.PS4_Title} ({PS4_PKG.PKG_Type})\\"
+    ? $"{outputDirectory}\\{PS4_PKG.PS4_Title.SanitizeFileName()} ({PS4_PKG.PKG_Type})\\"
     : outputDirectory;
 
                     Directory.CreateDirectory(finalPath);
@@ -1248,9 +1263,16 @@ namespace PS4PKGTool
                             ExtractImage(PS4_PKG.Image2, finalPath, "PIC1", PS4_PKG, respectiveExtract);
                             break;
                     }
-                    toolStripProgressBar1.Increment(1);
                     countPkg++;
-                    toolStripStatusLabel2.Text = "Extracting images/icons.. (" + countPkg + "/" + pkgFilesList.Count + ")";
+                    int current = countPkg;
+                    int max = total;
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        toolStripProgressBar1.Minimum = 0;
+                        toolStripProgressBar1.Maximum = 100;
+                        toolStripProgressBar1.Value = (int)(100.0 * current / max);
+                        toolStripStatusLabel2.Text = $"Saving artwork.. ({current}/{max})";
+                    });
                 }
                 catch (Exception a)
                 {
@@ -1267,7 +1289,7 @@ namespace PS4PKGTool
                 {
                     string filePath = respectiveExtract
                         ? Path.Combine(path, $"{fileNamePrefix}.PNG")
-                        : Path.Combine(path, $"{PS4_PKG.PS4_Title}_{fileNamePrefix}.PNG");
+                        : Path.Combine(path, $"{PS4_PKG.PS4_Title.SanitizeFileName()}_{fileNamePrefix}.PNG");
 
                     tempImage.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
                 }
@@ -1278,15 +1300,18 @@ namespace PS4PKGTool
         {
             if (!string.IsNullOrEmpty(Helper.Bitmap.FailExtractImageList))
             {
+                Log("Artwork extraction completed with errors.");
                 ShowWarning("Some PKG fail to extract : \n\n" + Helper.Bitmap.FailExtractImageList, false);
                 Logger.LogWarning("Some PKG fail to extract : \n\n" + Helper.Bitmap.FailExtractImageList);
             }
             else
             {
-                ShowInformation($"Images/icons extracted.", true);
+                Log("Artwork saved successfully.");
+                ShowInformation("Artwork saved.", true);
             }
 
             toolStripStatusLabel2.Text = "... ";
+            toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
             toolStripProgressBar1.Value = 0;
             this.Enabled = true;
         }
@@ -1398,7 +1423,7 @@ namespace PS4PKGTool
             foreach (DataGridViewRow row in PKGGridView.SelectedRows)
             {
                 string cid = row.Cells[3].Value?.ToString();
-                if (!string.IsNullOrEmpty(cid)) ids.Add(cid.Replace(":", " -"));
+                if (!string.IsNullOrEmpty(cid)) ids.Add(cid);
             }
             if (ids.Count == 0) { ShowError("No PKG file selected.", false); return; }
             Clipboard.SetText(string.Join("\n", ids));
@@ -1653,7 +1678,7 @@ namespace PS4PKGTool
             foreach (DataGridViewRow row in PKGGridView.SelectedRows)
             {
                 string tid = row.Cells[2].Value?.ToString();
-                if (!string.IsNullOrEmpty(tid)) ids.Add(tid.Replace(":", " -"));
+                if (!string.IsNullOrEmpty(tid)) ids.Add(tid);
             }
             if (ids.Count == 0) { ShowError("No PKG file selected.", false); return; }
             Clipboard.SetText(string.Join("\n", ids));
@@ -1702,7 +1727,7 @@ namespace PS4PKGTool
         #region ImageIconExtractor
         private void InitializedImageIconExtractor(string imageType, string selectionType)
         {
-            DialogResult extractionDialog = DialogResultYesNoCancel("Extract to their respective folders?");
+            DialogResult extractionDialog = DialogResultYesNoCancel("Create subfolder for each PKG?");
 
             if (extractionDialog == DialogResult.Cancel)
                 return;
@@ -1711,13 +1736,19 @@ namespace PS4PKGTool
 
             if (ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
             {
-                Logger.LogInformation("Extracting images/icons..");
-                toolStripStatusLabel2.Text = "Extracting images/icons..";
+                Logger.LogInformation("Saving artwork..");
+                toolStripStatusLabel2.Text = "Saving artwork..";
                 var outputDirectory = fbd.SelectedPath;
+                var pkgList = GetSelectedPKGDirectoryList(selectionType);
+                Log($"Save artwork: {pkgList.Count} PKG(s)");
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Minimum = 0;
+                toolStripProgressBar1.Maximum = 100;
+                toolStripProgressBar1.Value = 0;
                 var backgroundWorker = new BackgroundWorker();
                 backgroundWorker.DoWork += (s, e) =>
                 {
-                    ImageIconExtractor(imageType, GetSelectedPKGDirectoryList(selectionType), outputDirectory, respectiveExtract);
+                    ImageIconExtractor(imageType, pkgList, outputDirectory, respectiveExtract);
                 };
                 backgroundWorker.RunWorkerCompleted += (s, e) =>
                 {
@@ -1729,39 +1760,10 @@ namespace PS4PKGTool
 
         private void ExtractImageIcon_Click(object sender, EventArgs e)
         {
-            if (sender is ToolStripMenuItem clickedMenuItem)
+            if (sender is ToolStripMenuItem item && item.Tag is string tag)
             {
-                // global
-                if (clickedMenuItem == globalExtractImagesAndIconToolStripMenuItem1 || clickedMenuItem == globalExtractImagesAndIconToolStripMenuItem2)
-                {
-                    InitializedImageIconExtractor(ImageIconExtractionType.ALL, PKGSelectionType.ALL);
-                }
-
-                if (clickedMenuItem == globalExtractImageOnlyToolStripMenuItem1 || clickedMenuItem == globalExtractImageOnlyToolStripMenuItem2)
-                {
-                    InitializedImageIconExtractor(ImageIconExtractionType.IMAGE, PKGSelectionType.ALL);
-                }
-
-                if (clickedMenuItem == globalExtractIconOnlyToolStripMenuItem1 || clickedMenuItem == globalExtractIconOnlyToolStripMenuItem2)
-                {
-                    InitializedImageIconExtractor(ImageIconExtractionType.ICON, PKGSelectionType.ALL);
-                }
-
-                // selected
-                if (clickedMenuItem == selectedExtractImagesAndIconToolStripMenuItem1 || clickedMenuItem == selectedExtractImagesAndIconToolStripMenuItem2)
-                {
-                    InitializedImageIconExtractor(ImageIconExtractionType.ALL, PKGSelectionType.SELECTED);
-                }
-
-                if (clickedMenuItem == selectedExtractImageOnlyToolStripMenuItem1 || clickedMenuItem == selectedExtractImageOnlyToolStripMenuItem2)
-                {
-                    InitializedImageIconExtractor(ImageIconExtractionType.IMAGE, PKGSelectionType.SELECTED);
-                }
-
-                if (clickedMenuItem == selectedExtractIconOnlyToolStripMenuItem1 || clickedMenuItem == selectedExtractIconOnlyToolStripMenuItem2)
-                {
-                    InitializedImageIconExtractor(ImageIconExtractionType.ICON, PKGSelectionType.SELECTED);
-                }
+                var parts = tag.Split('|');
+                InitializedImageIconExtractor(parts[0], parts[1]);
             }
         }
         #endregion ImageIconExtractor
@@ -1943,6 +1945,7 @@ namespace PS4PKGTool
                     [PKGRegion.KOREA] = (byte[])imgCvt2.ConvertTo(Properties.Resources.kr, typeof(byte[])),
                 };
                 bool chkBackport2 = File.Exists(Backport.BackportInfoFile);
+                var backportCache2 = chkBackport2 ? Backport.LoadCache() : null;
                 dynamic ps5BcCache2 = null;
                 bool usePs5Bc2 = appSettings_.psvr_neo_ps5bc_check && File.Exists(Ps5BcJsonFile);
                 if (usePs5Bc2) { try { ps5BcCache2 = JsonConvert.DeserializeObject(File.ReadAllText(Ps5BcJsonFile)); } catch { usePs5Bc2 = false; } }
@@ -2007,7 +2010,7 @@ namespace PS4PKGTool
                         else if (usePs5Bc2) { psVr = neoEnable = ps5bc = "-"; }
 
                         // Backport check
-                        string pkgIsBackported = chkBackport2 ? Backport.CheckPKGBackported(pkgFile) ?? "No" : "No";
+                        string pkgIsBackported = (backportCache2 != null && backportCache2.TryGetValue(pkgFile, out var bp2)) ? bp2 : "No";
 
                         dt.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, ps4Pkg.Param.TITLEID, ps4Pkg.Param.ContentID,
                             pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]",
@@ -2225,6 +2228,7 @@ namespace PS4PKGTool
                     [PKGRegion.KOREA] = (byte[])imageCvt.ConvertTo(Properties.Resources.kr, typeof(byte[])),
                 };
                 bool checkBackport = File.Exists(Backport.BackportInfoFile);
+                var backportCache = checkBackport ? Backport.LoadCache() : null;
                 // Cache PS5 BC JSON once (not per PKG)
                 dynamic ps5BcJsonCache = null;
                 bool usePs5Bc = appSettings_.psvr_neo_ps5bc_check && File.Exists(Ps5BcJsonFile);
@@ -2304,7 +2308,7 @@ namespace PS4PKGTool
                     regionIcons.TryGetValue(region, out pkgRegionIcon);
 
                     // check if pkg is backported (cached file existence)
-                    string pkgIsBackported = checkBackport ? Backport.CheckPKGBackported(pkg) ?? "No" : "No";
+                    string pkgIsBackported = (backportCache != null && backportCache.TryGetValue(pkg, out var bp)) ? bp : "No";
 
 
                     // add items to datatable
@@ -2585,6 +2589,7 @@ namespace PS4PKGTool
             var confirm = DialogResultYesNo(
                 $"{paths.Count} PKG file{(paths.Count == 1 ? "" : "s")} will be permanently deleted.\n\nContinue?");
             if (confirm != DialogResult.Yes) return;
+            Log($"Delete: {paths.Count} PKG(s)");
             PKG.isDeletingPkg = true;
             toolStripProgressBar1.Visible = true;
             toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
@@ -2594,6 +2599,7 @@ namespace PS4PKGTool
                 try { File.Delete(p); }
                 catch (Exception ex) { Logger.LogError($"Failed to delete {p}: {ex.Message}"); }
             }
+            Log($"Delete completed: {paths.Count} PKG(s)");
             PKG.isDeletingPkg = false;
             toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
             RefreshPkgList();
@@ -2628,20 +2634,24 @@ namespace PS4PKGTool
         {
             var paths = GetGLVTargetPaths();
             if (paths.Count == 0) { ShowError("No PKG selected.", false); return; }
-            using var fbd = new FolderBrowserDialog { Description = "Select output folder for extracted images/icons" };
+            using var fbd = new FolderBrowserDialog { Description = "Select output folder for artwork" };
             if (fbd.ShowDialog() != DialogResult.OK) return;
+            Log($"Save artwork: {paths.Count} PKG(s) to {fbd.SelectedPath}");
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
             var bg = new BackgroundWorker();
             bg.DoWork += (_, _) =>
             {
-                foreach (var p in paths)
-                    ImageIconExtractor("icon0", new List<string> { p }, fbd.SelectedPath, false);
+                ImageIconExtractor(ImageIconExtractionType.ICON, paths, fbd.SelectedPath, false);
             };
             bg.RunWorkerCompleted += (_, _) =>
             {
-                ShowInformation($"Images extracted to {fbd.SelectedPath}", true);
+                Log("Artwork saved successfully.");
+                ShowInformation($"Artwork saved to {fbd.SelectedPath}", true);
                 toolStripStatusLabel2.Text = "...";
+                toolStripProgressBar1.Style = ProgressBarStyle.Blocks;
+                toolStripProgressBar1.Value = 0;
             };
-            toolStripStatusLabel2.Text = "Extracting images/icons...";
+            toolStripStatusLabel2.Text = "Saving artwork...";
             bg.RunWorkerAsync();
         }
 
@@ -5578,18 +5588,18 @@ namespace PS4PKGTool
             bg.DoWork += delegate
             {
                 int countPkg = 0;
+                int lastInvoked = 0;
                 this.Invoke((Action)(() => this.Enabled = false));
                 PKG.pkgCount = 0;
                 this.Invoke((Action)(() => toolStripProgressBar1.Maximum = pkgList.Count));
                 PKG.CountFailRename = 0;
                 PKG.ListFailRename = "";
+                Log($"Rename: {pkgList.Count} PKG(s) to {namingFormat} format");
                 Logger.LogInformation($"Renaming PKG file to {namingFormat} format..");
                 foreach (var pkg in pkgList)
                 {
                     try
                     {
-                        PS4_Tools.PKG.SceneRelated.Unprotected_PKG readPkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
-                        Param_SFO.PARAM_SFO psfo = readPkg.Param;
                         string destinationFolder = Path.GetDirectoryName(pkg) + @"\";
                         string newPkgName = "";
                         string sourcePkg = "";
@@ -5598,11 +5608,17 @@ namespace PS4PKGTool
                         UpdatePKGFilename(newPkgName, sourcePkg, targetPkg);
                         countPkg++;
 
-                        PKGGridView.Invoke((Action)(() =>
+                        if (countPkg % 10 == 0 || countPkg == pkgList.Count)
                         {
-                            toolStripStatusLabel2.Text = $"Renaming PKG.. ({countPkg}/{pkgList.Count})";
-                            toolStripProgressBar1.Increment(1);
-                        }));
+                            var current = countPkg;
+                            var increment = countPkg - lastInvoked;
+                            lastInvoked = countPkg;
+                            PKGGridView.Invoke((Action)(() =>
+                            {
+                                toolStripStatusLabel2.Text = $"Renaming PKG.. ({current}/{pkgList.Count})";
+                                toolStripProgressBar1.Increment(increment);
+                            }));
+                        }
                     }
                     catch (Exception a)
                     {
@@ -5615,12 +5631,14 @@ namespace PS4PKGTool
             {
                 if (PKG.CountFailRename > 0)
                 {
+                    Log($"Rename completed with {PKG.CountFailRename} failure(s).");
                     ShowWarning(PKG.CountFailRename + " PKG failed to rename. See program log to view the errors.", false);
                     Logger.LogWarning(PKG.CountFailRename + " PKG failed to rename:");
                     Logger.LogWarning(PKG.ListFailRename);
                 }
                 else
                 {
+                    Log("Rename completed successfully.");
                     ShowInformation("PKG rename done.", true);
                 }
 
@@ -5756,11 +5774,13 @@ namespace PS4PKGTool
             {
                 Logger.LogWarning($"Priority rename completed with {totalFailed} failure(s):\n{failList}");
                 ShowWarning($"Renamed {totalRenamed} PKG(s) by install priority.\n{totalFailed} PKG(s) failed (see log).", true);
+                Log($"Rename by priority completed: {totalRenamed} renamed, {totalFailed} failed.");
             }
             else
             {
                 Logger.LogInformation($"Priority rename completed: {totalRenamed} PKG(s) renamed.");
                 ShowInformation($"Renamed {totalRenamed} PKG(s) by install priority.", true);
+                Log($"Rename by priority completed: {totalRenamed} renamed.");
             }
         }
 
@@ -5839,6 +5859,7 @@ namespace PS4PKGTool
                 PKG.pkgCount = 0;
                 toolStripProgressBar1.Maximum = PKG.VerifiedPs4PkgList.Count;
                 var pkgList = GetSelectedPKGDirectoryList(PKGSelectionType.ALL, true);
+                Log($"Move PKG by {moveBy}: {pkgList.Count} PKG(s)");
                 Logger.LogInformation($"Moving PKG to new directory..");
 
                 foreach (var pkgFile in pkgList)
@@ -5877,12 +5898,14 @@ namespace PS4PKGTool
             {
                 if (PKG.CountFailMove > 0)
                 {
+                    Log($"Move completed with {PKG.CountFailMove} failure(s).");
                     ShowWarning(PKG.CountFailMove + " PKG failed to move. See program log to view the errors.", false);
                     Logger.LogWarning(PKG.CountFailMove + " PKG failed to move:");
                     Logger.LogWarning(PKG.ListFailMove);
                 }
                 else
                 {
+                    Log("Move completed successfully.");
                     ShowInformation($"PKG moved to new directories.", true);
                 }
 

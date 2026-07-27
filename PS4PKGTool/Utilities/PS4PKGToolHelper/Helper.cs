@@ -90,6 +90,21 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 catch { return null; }
             }
 
+            public static Dictionary<string, string> LoadCache()
+            {
+                if (!File.Exists(BackportInfoFile)) return null;
+                try
+                {
+                    string json = File.ReadAllText(BackportInfoFile);
+                    var list = JsonConvert.DeserializeObject<List<BackportInfo>>(json);
+                    return list?.ToDictionary(
+                        b => b.FilePath,
+                        b => b.Backported,
+                        StringComparer.OrdinalIgnoreCase);
+                }
+                catch { return null; }
+            }
+
             public static void SaveData(DarkDataGridView dataGridView)
             {
                 List<BackportInfo> updatedPkgFileList = new List<BackportInfo>();
@@ -937,7 +952,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     foreach (var pkgFile in PKG.VerifiedPs4PkgList)
                     {
                         Unprotected_PKG pkg = Read_PKG(pkgFile);
-                        string filteredTitle = pkg.Param.Title.SanitizeFileName();
+                        string filteredTitle = pkg.PS4_Title.SanitizeFileName();
                         string finalTitle = filteredTitle.Replace("  -", " -");
                         var fileExists = Path.Combine(bgmPath, finalTitle + ".AT9");
                         if (File.Exists(fileExists))

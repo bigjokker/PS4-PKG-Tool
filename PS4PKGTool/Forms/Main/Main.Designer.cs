@@ -606,7 +606,7 @@ namespace PS4PKGTool
             toolStripMenuItem3.Name = "toolStripMenuItem3";
             toolStripMenuItem3.ShowShortcutKeys = false;
             toolStripMenuItem3.Size = new System.Drawing.Size(249, 22);
-            toolStripMenuItem3.Text = "Extract images/icons";
+            toolStripMenuItem3.Text = "Save artwork";
             // 
             // globalExtractImagesAndIconToolStripMenuItem2
             // 
@@ -614,7 +614,7 @@ namespace PS4PKGTool
             globalExtractImagesAndIconToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             globalExtractImagesAndIconToolStripMenuItem2.Name = "globalExtractImagesAndIconToolStripMenuItem2";
             globalExtractImagesAndIconToolStripMenuItem2.Size = new System.Drawing.Size(199, 22);
-            globalExtractImagesAndIconToolStripMenuItem2.Text = "Extract images and icon";
+            globalExtractImagesAndIconToolStripMenuItem2.Text = "Backgrounds + Icon";
             globalExtractImagesAndIconToolStripMenuItem2.Click += ExtractImageIcon_Click;
             // 
             // globalExtractImageOnlyToolStripMenuItem2
@@ -623,7 +623,7 @@ namespace PS4PKGTool
             globalExtractImageOnlyToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             globalExtractImageOnlyToolStripMenuItem2.Name = "globalExtractImageOnlyToolStripMenuItem2";
             globalExtractImageOnlyToolStripMenuItem2.Size = new System.Drawing.Size(199, 22);
-            globalExtractImageOnlyToolStripMenuItem2.Text = "Extract image only";
+            globalExtractImageOnlyToolStripMenuItem2.Text = "Backgrounds only";
             globalExtractImageOnlyToolStripMenuItem2.Click += ExtractImageIcon_Click;
             // 
             // globalExtractIconOnlyToolStripMenuItem2
@@ -632,7 +632,7 @@ namespace PS4PKGTool
             globalExtractIconOnlyToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             globalExtractIconOnlyToolStripMenuItem2.Name = "globalExtractIconOnlyToolStripMenuItem2";
             globalExtractIconOnlyToolStripMenuItem2.Size = new System.Drawing.Size(199, 22);
-            globalExtractIconOnlyToolStripMenuItem2.Text = "Extract icon only";
+            globalExtractIconOnlyToolStripMenuItem2.Text = "Icon only";
             globalExtractIconOnlyToolStripMenuItem2.Click += ExtractImageIcon_Click;
             // 
             // toolStripMenuItem111
@@ -971,7 +971,7 @@ namespace PS4PKGTool
             GroupActionExtacrtImageToolStripMenuItem.Name = "GroupActionExtacrtImageToolStripMenuItem";
             GroupActionExtacrtImageToolStripMenuItem.ShowShortcutKeys = false;
             GroupActionExtacrtImageToolStripMenuItem.Size = new System.Drawing.Size(249, 22);
-            GroupActionExtacrtImageToolStripMenuItem.Text = "Extract images/icons";
+            GroupActionExtacrtImageToolStripMenuItem.Text = "Save artwork";
             // 
             // selectedExtractImagesAndIconToolStripMenuItem2
             // 
@@ -979,7 +979,7 @@ namespace PS4PKGTool
             selectedExtractImagesAndIconToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             selectedExtractImagesAndIconToolStripMenuItem2.Name = "selectedExtractImagesAndIconToolStripMenuItem2";
             selectedExtractImagesAndIconToolStripMenuItem2.Size = new System.Drawing.Size(199, 22);
-            selectedExtractImagesAndIconToolStripMenuItem2.Text = "Extract images and icon";
+            selectedExtractImagesAndIconToolStripMenuItem2.Text = "Backgrounds + Icon";
             selectedExtractImagesAndIconToolStripMenuItem2.Click += ExtractImageIcon_Click;
             // 
             // selectedExtractImageOnlyToolStripMenuItem2
@@ -988,7 +988,7 @@ namespace PS4PKGTool
             selectedExtractImageOnlyToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             selectedExtractImageOnlyToolStripMenuItem2.Name = "selectedExtractImageOnlyToolStripMenuItem2";
             selectedExtractImageOnlyToolStripMenuItem2.Size = new System.Drawing.Size(199, 22);
-            selectedExtractImageOnlyToolStripMenuItem2.Text = "Extract image only";
+            selectedExtractImageOnlyToolStripMenuItem2.Text = "Backgrounds only";
             selectedExtractImageOnlyToolStripMenuItem2.Click += ExtractImageIcon_Click;
             // 
             // selectedExtractIconOnlyToolStripMenuItem2
@@ -997,7 +997,7 @@ namespace PS4PKGTool
             selectedExtractIconOnlyToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             selectedExtractIconOnlyToolStripMenuItem2.Name = "selectedExtractIconOnlyToolStripMenuItem2";
             selectedExtractIconOnlyToolStripMenuItem2.Size = new System.Drawing.Size(199, 22);
-            selectedExtractIconOnlyToolStripMenuItem2.Text = "Extract icon only";
+            selectedExtractIconOnlyToolStripMenuItem2.Text = "Icon only";
             selectedExtractIconOnlyToolStripMenuItem2.Click += ExtractImageIcon_Click;
             // 
             // toolStripMenuItem133
@@ -1394,7 +1394,7 @@ namespace PS4PKGTool
             extractImageAndBackgroundToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             extractImageAndBackgroundToolStripMenuItem.Name = "extractImageAndBackgroundToolStripMenuItem";
             extractImageAndBackgroundToolStripMenuItem.Size = new System.Drawing.Size(254, 22);
-            extractImageAndBackgroundToolStripMenuItem.Text = "Extract images/icons";
+            extractImageAndBackgroundToolStripMenuItem.Text = "Save artwork";
             // 
             // globalExtractImagesAndIconToolStripMenuItem1
             // 
@@ -1402,7 +1402,7 @@ namespace PS4PKGTool
             globalExtractImagesAndIconToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             globalExtractImagesAndIconToolStripMenuItem1.Name = "globalExtractImagesAndIconToolStripMenuItem1";
             globalExtractImagesAndIconToolStripMenuItem1.Size = new System.Drawing.Size(199, 22);
-            globalExtractImagesAndIconToolStripMenuItem1.Text = "Extract images and icon";
+            globalExtractImagesAndIconToolStripMenuItem1.Text = "Backgrounds + Icon";
             globalExtractImagesAndIconToolStripMenuItem1.Click += ExtractImageIcon_Click;
             // 
             // globalExtractImageOnlyToolStripMenuItem1
@@ -1411,7 +1411,7 @@ namespace PS4PKGTool
             globalExtractImageOnlyToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             globalExtractImageOnlyToolStripMenuItem1.Name = "globalExtractImageOnlyToolStripMenuItem1";
             globalExtractImageOnlyToolStripMenuItem1.Size = new System.Drawing.Size(199, 22);
-            globalExtractImageOnlyToolStripMenuItem1.Text = "Extract image only";
+            globalExtractImageOnlyToolStripMenuItem1.Text = "Backgrounds only";
             globalExtractImageOnlyToolStripMenuItem1.Click += ExtractImageIcon_Click;
             // 
             // globalExtractIconOnlyToolStripMenuItem1
@@ -1420,7 +1420,7 @@ namespace PS4PKGTool
             globalExtractIconOnlyToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             globalExtractIconOnlyToolStripMenuItem1.Name = "globalExtractIconOnlyToolStripMenuItem1";
             globalExtractIconOnlyToolStripMenuItem1.Size = new System.Drawing.Size(199, 22);
-            globalExtractIconOnlyToolStripMenuItem1.Text = "Extract icon only";
+            globalExtractIconOnlyToolStripMenuItem1.Text = "Icon only";
             globalExtractIconOnlyToolStripMenuItem1.Click += ExtractImageIcon_Click;
             // 
             // renameToolStripMenuItem
@@ -1735,7 +1735,7 @@ namespace PS4PKGTool
             toolStripMenuItem28.Name = "toolStripMenuItem28";
             toolStripMenuItem28.ShowShortcutKeys = false;
             toolStripMenuItem28.Size = new System.Drawing.Size(254, 22);
-            toolStripMenuItem28.Text = "Extract images/icons";
+            toolStripMenuItem28.Text = "Save artwork";
             // 
             // selectedExtractImagesAndIconToolStripMenuItem1
             // 
@@ -1743,7 +1743,7 @@ namespace PS4PKGTool
             selectedExtractImagesAndIconToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             selectedExtractImagesAndIconToolStripMenuItem1.Name = "selectedExtractImagesAndIconToolStripMenuItem1";
             selectedExtractImagesAndIconToolStripMenuItem1.Size = new System.Drawing.Size(199, 22);
-            selectedExtractImagesAndIconToolStripMenuItem1.Text = "Extract images and icon";
+            selectedExtractImagesAndIconToolStripMenuItem1.Text = "Backgrounds + Icon";
             selectedExtractImagesAndIconToolStripMenuItem1.Click += ExtractImageIcon_Click;
             // 
             // selectedExtractImageOnlyToolStripMenuItem1
@@ -1752,7 +1752,7 @@ namespace PS4PKGTool
             selectedExtractImageOnlyToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             selectedExtractImageOnlyToolStripMenuItem1.Name = "selectedExtractImageOnlyToolStripMenuItem1";
             selectedExtractImageOnlyToolStripMenuItem1.Size = new System.Drawing.Size(199, 22);
-            selectedExtractImageOnlyToolStripMenuItem1.Text = "Extract image only";
+            selectedExtractImageOnlyToolStripMenuItem1.Text = "Backgrounds only";
             selectedExtractImageOnlyToolStripMenuItem1.Click += ExtractImageIcon_Click;
             // 
             // selectedExtractIconOnlyToolStripMenuItem1
@@ -1761,7 +1761,7 @@ namespace PS4PKGTool
             selectedExtractIconOnlyToolStripMenuItem1.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             selectedExtractIconOnlyToolStripMenuItem1.Name = "selectedExtractIconOnlyToolStripMenuItem1";
             selectedExtractIconOnlyToolStripMenuItem1.Size = new System.Drawing.Size(199, 22);
-            selectedExtractIconOnlyToolStripMenuItem1.Text = "Extract icon only";
+            selectedExtractIconOnlyToolStripMenuItem1.Text = "Icon only";
             selectedExtractIconOnlyToolStripMenuItem1.Click += ExtractImageIcon_Click;
             // 
             // renameCurrentPKGStripMenuItem
