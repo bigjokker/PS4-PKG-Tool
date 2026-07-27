@@ -41,12 +41,9 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 darkLabelMessage.Size = new Size(420, neededHeight - 85);
             }
 
-            // Show Copy button for error and warning dialogs
-            if (type == AppMessageType.Error || type == AppMessageType.Warning)
-            {
-                btnCopy.Visible = true;
-                btnCopy.Location = new Point(20, this.ClientSize.Height - 42);
-            }
+            // Show Copy button on all dialog types
+            btnCopy.Visible = true;
+            btnCopy.Location = new Point(20, this.ClientSize.Height - 42);
 
             // Show/hide buttons
             switch (buttons)

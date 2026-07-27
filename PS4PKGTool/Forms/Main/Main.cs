@@ -119,6 +119,21 @@ namespace PS4PKGTool
             // Suppress DataGridView DataError dialogs (occurs during rapid DataSource changes)
             PKGGridView.DataError += (_, args) => { args.Cancel = true; }; // suppress column mismatch errors during DataSource changes
 
+            // Right-click selects the full row under the cursor so context-menu state is correct
+            PKGGridView.CellMouseDown += (_, e) =>
+            {
+                if (e.Button == MouseButtons.Right && e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count)
+                {
+                    PKGGridView.ClearSelection();
+                    PKGGridView.Rows[e.RowIndex].Selected = true;
+                    PKGGridView.CurrentCell = PKGGridView.Rows[e.RowIndex].Cells[e.ColumnIndex >= 0 ? e.ColumnIndex : 0];
+                    UpdateOfficialUpdateMenuState();
+                }
+            };
+
+            // Refresh official-update menu state when the Tool menu opens
+            toolToolStripMenuItem1.DropDownOpening += (_, _) => UpdateOfficialUpdateMenuState();
+
             ApplicationVersion = GetApplicationVersion();
 
             foreach (ColumnHeader column in listView1.Columns)
@@ -352,12 +367,33 @@ namespace PS4PKGTool
 
                     LoadPKGDetails();
                 }
+
+                UpdateOfficialUpdateMenuState();
             }
             catch (Exception ex)
             {
                 Log($"ERROR: Selection changed: {ex.Message}");
                 Logger.LogError($"Error on selection change: {ex.Message}");
             }
+        }
+
+        private void UpdateOfficialUpdateMenuState()
+        {
+            bool canOpen = false;
+            try
+            {
+                if (PKGGridView.SelectedRows.Count == 1)
+                {
+                    string pkgType = PKGGridView.SelectedRows[0].Cells[8].Value?.ToString() ?? "";
+                    canOpen = pkgType == PKGCategory.GAME || pkgType == PKGCategory.PATCH;
+                }
+            }
+            catch { }
+
+            if (downloadOfficialUpdateToolStripMenuItem1 != null)
+                downloadOfficialUpdateToolStripMenuItem1.Enabled = canOpen;
+            if (downloadOfficialUpdateToolStripMenuItem2 != null)
+                downloadOfficialUpdateToolStripMenuItem2.Enabled = canOpen;
         }
 
         private async void Form1_Load(object sender, EventArgs e)
@@ -518,7 +554,6 @@ namespace PS4PKGTool
                 PKGTreeView.Nodes.Clear();
 
                 if (appSettings_.PlayBgm) PlayBGM(pkgPath);
-                GetOfficialUpdate(ps4Pkg);
                 toolStripStatusLabel2.Text = "...";
             };
 
@@ -530,90 +565,65 @@ namespace PS4PKGTool
             this.Text = "PS4 PKG Tool " + ApplicationVersion + " - Viewing \"" + pkgTitle + "\"";
         }
 
-        private void GetOfficialUpdate(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
+        private OfficialUpdateForm _officialUpdateForm;
+
+        private void OpenOfficialUpdateForm()
         {
-            if (pkg.PKG_Type.ToString() == PKGCategory.GAME || pkg.PKG_Type.ToString() == PKGCategory.PATCH)
+            try
             {
-                var bg = new BackgroundWorker();
-                bg.DoWork += delegate
+                if (PKGGridView.SelectedRows.Count != 1)
                 {
-                    try
-                    {
-                        PS4_Tools.PKG.SceneRelated.Unprotected_PKG PS4_PKG = PS4_Tools.PKG.SceneRelated.Read_PKG(PKG.SelectedPKGFilename);
+                    ShowInformation("Please select a single PKG.", false);
+                    return;
+                }
 
-                        DataTable DT = (DataTable)dgvUpdate.DataSource;
-                        DT?.Clear();
+                DataGridViewRow row = PKGGridView.SelectedRows[0];
+                string pkgType = row.Cells[8].Value?.ToString() ?? "";
+                if (pkgType != PKGCategory.GAME && pkgType != PKGCategory.PATCH)
+                {
+                    ShowInformation("Official updates are only available for Game and Patch PKGs.", false);
+                    return;
+                }
 
-                        if (Tool.CheckForInternetConnection())
-                        {
-                            Logger.LogInformation("Checking official update for " + PS4_PKG.PS4_Title + "..");
-                            var item = PS4_Tools.PKG.Official.CheckForUpdate(PS4_PKG.Param.TITLEID);
+                string filename = row.Cells[0].Value?.ToString();
+                string directory = row.Cells[13].Value?.ToString();
+                if (string.IsNullOrEmpty(filename) || string.IsNullOrEmpty(directory))
+                {
+                    ShowError("Could not determine PKG path.", false);
+                    return;
+                }
 
-                            if (item != null && item.Tag.Package.Manifest_url != null)
-                            {
-                                this.Invoke((MethodInvoker)delegate
-                                {
-                                    DataTable dt = new DataTable();
-                                    dt.Columns.Add("Part");
-                                    dt.Columns.Add("File Size");
-                                    dt.Columns.Add("Hash");
-                                    dt.Columns.Add("URL");
+                string pkgPath = Path.Combine(directory, filename);
+                if (!File.Exists(pkgPath))
+                {
+                    ShowError("Selected PKG file not found.", false);
+                    return;
+                }
 
-                                    int ver = Convert.ToInt32(item.Tag.Package.System_ver);
-                                    string hexOutput = $"{ver:X}";
-                                    string firstThree = hexOutput.Substring(0, 3);
-                                    string version = firstThree.Insert(1, ".");
+                var pkg = PS4_Tools.PKG.SceneRelated.Read_PKG(pkgPath);
+                if (pkg?.Param?.TITLEID == null)
+                {
+                    ShowError("Could not read PKG title ID.", false);
+                    return;
+                }
 
-                                    long sizes = Convert.ToInt64(item.Tag.Package.Size);
-                                    var size_final = ByteSize.FromBytes(sizes).ToString();
+                if (_officialUpdateForm == null || _officialUpdateForm.IsDisposed)
+                    _officialUpdateForm = new OfficialUpdateForm();
 
-                                    lblUpdateInfo.Text = "";
-                                    lblVersion.Text = $"Version: {item.Tag.Package.Version}";
-                                    lblSysVer.Text = $"System: {version}";
-                                    lblUpdType.Text = $"Type: {ToTitleCase(item.Tag.Package.Type)}";
-                                    lblMand.Text = $"Mandatory: {ToTitleCase(item.Tag.Mandatory)}";
-                                    lblRemaster.Text = $"Remaster: {ToTitleCase(item.Tag.Package.Remaster)}";
-                                    lblFiles.Text = $"Files: {item.Tag.Package.Manifest_item.pieces.Count}";
-                                    lblSize.Text = $"Size: {size_final}";
-
-                                    int part = 0;
-                                    foreach (var manifestItem in item.Tag.Package.Manifest_item.pieces)
-                                    {
-                                        part++;
-                                        long fileSize = manifestItem.fileSize;
-                                        string hashValue = manifestItem.hashValue.ToString();
-                                        string url = manifestItem.url.ToString();
-                                        var size = ByteSize.FromBytes(fileSize);
-
-                                        dt.Rows.Add("Part " + part, size, hashValue.ToUpper(), url);
-                                    }
-
-                                    dgvUpdate.DataSource = dt;
-
-                                    foreach (DataGridViewColumn column in dgvUpdate.Columns)
-                                    {
-                                        column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                                        column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                Logger.LogInformation("\"" + PS4_PKG.PS4_Title + "\" has no update.");
-                            }
-                        }
-                        else
-                        {
-                            Logger.LogError("Network is not available.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("An error occurred while checking for updates: " + ex.Message);
-                    }
-                };
-                bg.RunWorkerAsync();
+                _officialUpdateForm.LoadUpdate(pkg.Param.TITLEID, pkgType, appSettings_.OfficialUpdateDownloadDirectory);
+                _officialUpdateForm.Show();
+                _officialUpdateForm.BringToFront();
             }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error opening official update form: " + ex.Message);
+                ShowError("Error opening official update form: " + ex.Message, true);
+            }
+        }
+
+        private void DownloadOfficialUpdate_Click(object sender, EventArgs e)
+        {
+            OpenOfficialUpdateForm();
         }
 
         private void LoadPubToolInfo(PS4_Tools.PKG.SceneRelated.Unprotected_PKG pkg)
@@ -1395,6 +1405,32 @@ namespace PS4PKGTool
             ShowInformation($"{ids.Count} Content ID(s) copied to clipboard.", true);
         }
 
+        private void CopyTitle()
+        {
+            var titles = new List<string>();
+            foreach (DataGridViewRow row in PKGGridView.SelectedRows)
+            {
+                string title = row.Cells[1].Value?.ToString();
+                if (!string.IsNullOrEmpty(title)) titles.Add(title);
+            }
+            if (titles.Count == 0) { ShowError("No PKG file selected.", false); return; }
+            Clipboard.SetText(string.Join("\n", titles));
+            ShowInformation($"{titles.Count} Title(s) copied to clipboard.", true);
+        }
+
+        private void CopyFilename()
+        {
+            var filenames = new List<string>();
+            foreach (DataGridViewRow row in PKGGridView.SelectedRows)
+            {
+                string fn = row.Cells[0].Value?.ToString();
+                if (!string.IsNullOrEmpty(fn)) filenames.Add(fn);
+            }
+            if (filenames.Count == 0) { ShowError("No PKG file selected.", false); return; }
+            Clipboard.SetText(string.Join("\n", filenames));
+            ShowInformation($"{filenames.Count} Filename(s) copied to clipboard.", true);
+        }
+
         private void toolStripMenuItem76_Click(object sender, EventArgs e)
         {
             RefreshPkgList();
@@ -1636,6 +1672,14 @@ namespace PS4PKGTool
             if (clickedMenuItem == copyContentIdtoolStripMenuItem1 || clickedMenuItem == copyContentIdtoolStripMenuItem2)
             {
                 CopyContentID();
+            }
+            if (clickedMenuItem == copyTitleToolStripMenuItem1 || clickedMenuItem == copyTitleToolStripMenuItem2)
+            {
+                CopyTitle();
+            }
+            if (clickedMenuItem == copyFilenameToolStripMenuItem1 || clickedMenuItem == copyFilenameToolStripMenuItem2)
+            {
+                CopyFilename();
             }
         }
 
@@ -1881,6 +1925,7 @@ namespace PS4PKGTool
                     dt.Columns.Add("PS5 BC");
                     dt.Columns.Add("Directory");
                     dt.Columns.Add("Backported");
+                    dt.Columns.Add("Latest Update");
                     this.Invoke((MethodInvoker)delegate { PKGGridView.DataSource = dt; });
                 }
 
@@ -1967,7 +2012,7 @@ namespace PS4PKGTool
                         dt.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, ps4Pkg.Param.TITLEID, ps4Pkg.Param.ContentID,
                             pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]",
                             pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc,
-                            pkgDirectoryName, pkgIsBackported);
+                            pkgDirectoryName, pkgIsBackported, "NA");
 
                         // Update type counts
                         switch (ps4Pkg.PKG_Type.ToString())
@@ -2008,6 +2053,7 @@ namespace PS4PKGTool
                 });
                 SaveManifestAfterScan();
                 PopulateGroupedView();
+                PKGGridView.Sort(PKGGridView.Columns[0], ListSortDirection.Ascending);
                 SetOperationMenusEnabled(true);
                 // Trigger update check for new PKGs
                 if (appSettings_.AutoFetchUpdate) FetchAllUpdateVersions();
@@ -2137,6 +2183,7 @@ namespace PS4PKGTool
                 dttemp.Columns.Add("PS5 BC");
                 dttemp.Columns.Add("Directory");
                 dttemp.Columns.Add("Backported");
+                dttemp.Columns.Add("Latest Update");
 
                 // verify scanned ps4 pkg and count it
                 foreach (var item in PkgFileList)
@@ -2263,7 +2310,7 @@ namespace PS4PKGTool
                     // add items to datatable
                     string pkgMinFirmware = ps4Pkg.PKG_Type.ToString() == PKGCategory.ADDON ? "NA" : $"{pkgSystemVersion}";
                     pkgAppVersion = (pkgAppVersion == string.Empty) ? "NA" : pkgAppVersion;
-                    dttemp.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, pkgTitleId, ps4Pkg.Param.ContentID, pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]", pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc, pkgDirectoryName, pkgIsBackported);
+                    dttemp.Rows.Add(pkgFileName, ps4Pkg.PS4_Title, pkgTitleId, ps4Pkg.Param.ContentID, pkgRegionIcon, pkgMinFirmware, pkgVersion + $" [{pkgAppVersion}]", pkgState, pkgType, pkgSize, psVr, neoEnable, ps5bc, pkgDirectoryName, pkgIsBackported, "NA");
 
                     switch (ps4Pkg.PKG_Type.ToString())
                     {
@@ -2617,29 +2664,46 @@ namespace PS4PKGTool
                     {
                         var pkgData = PS4_Tools.PKG.SceneRelated.Read_PKG(pkg);
                         string titleId = pkgData.Param.TITLEID;
+                        string pkgType = pkgData.PKG_Type.ToString();
                         if (!string.IsNullOrEmpty(titleId))
                         {
-                            var updateInfo = PS4_Tools.PKG.Official.CheckForUpdate(titleId);
-                            if (updateInfo != null && updateInfo.Tag?.Package?.Manifest_url != null)
+                            string latestValue;
+                            if (pkgType == PKGCategory.ADDON)
                             {
-                                fetched++;
-                                string latestVer = updateInfo.Tag?.Package?.Version ?? "";
-                                this.Invoke((Action)(() =>
+                                latestValue = "NA";
+                            }
+                            else if (pkgType == PKGCategory.GAME || pkgType == PKGCategory.PATCH)
+                            {
+                                var updateInfo = PS4_Tools.PKG.Official.CheckForUpdate(titleId);
+                                if (updateInfo != null && updateInfo.Tag?.Package?.Manifest_url != null)
                                 {
-                                    var dt = PKGGridView.DataSource as DataTable;
-                                    if (dt != null)
+                                    fetched++;
+                                    latestValue = updateInfo.Tag?.Package?.Version ?? "No Update";
+                                }
+                                else
+                                {
+                                    latestValue = "No Update";
+                                }
+                            }
+                            else
+                            {
+                                latestValue = "NA";
+                            }
+                            this.Invoke((Action)(() =>
+                            {
+                                var dt = PKGGridView.DataSource as DataTable;
+                                if (dt != null)
+                                {
+                                    foreach (DataRow row in dt.Rows)
                                     {
-                                        foreach (DataRow row in dt.Rows)
+                                        if (row["Title ID"]?.ToString() == titleId)
                                         {
-                                            if (row["Title ID"]?.ToString() == titleId)
-                                            {
-                                                row["Latest Update"] = latestVer;
-                                                break;
-                                            }
+                                            row["Latest Update"] = latestValue;
+                                            break;
                                         }
                                     }
-                                }));
-                            }
+                                }
+                            }));
                         }
                         checked_++;
                         this.Invoke((Action)(() =>
@@ -2806,9 +2870,7 @@ namespace PS4PKGTool
             {
                 try
                 {
-                    // Sort file name ascending
-                    if (appSettings_.AutoSortRow)
-                        PKGGridView.Sort(PKGGridView.Columns[0], ListSortDirection.Ascending);
+                    PKGGridView.Sort(PKGGridView.Columns[0], ListSortDirection.Ascending);
 
                     // Set header cell alignment
                     for (int columnIndex = 0; columnIndex < PKGGridView.Columns.Count; columnIndex++)
@@ -5095,100 +5157,9 @@ namespace PS4PKGTool
             this.darkDataGridView4.ClearSelection();
         }
 
-        private void copyURLToolStripMenuItem_Click(object sender, EventArgs e)
+        private string ToTitleCase(string str)
         {
-            StringBuilder urlBuilder = new StringBuilder();
-
-            foreach (DataGridViewRow row in dgvUpdate.Rows)
-            {
-                //int selectedRowIndex = row.Index;
-                //DataGridViewRow selectedRow = dgvUpdate.Rows[selectedRowIndex];
-
-                string url = row.Cells[3].Value?.ToString();
-                if (!string.IsNullOrEmpty(url))
-                {
-                    urlBuilder.AppendLine(url);
-                }
-            }
-
-            string combinedUrls = urlBuilder.ToString().Trim();
-            if (!string.IsNullOrEmpty(combinedUrls))
-            {
-                Clipboard.SetText(combinedUrls);
-
-                ShowInformation("URL copied to clipboard.", true);
-            }
-            else
-            {
-                ShowInformation("No URL found.", true);
-            }
-        }
-
-        private void InitializedDownloadSelectedOfficialUupdate()
-        {
-            if (string.IsNullOrEmpty(appSettings_.OfficialUpdateDownloadDirectory))
-            {
-                ShowError("Select PKG update download path in settings", true);
-                return;
-            }
-
-            if (Helper.Update.Downloading == "no")
-            {
-                if (dgvUpdate.SelectedCells.Count > 0)
-                {
-                    try
-                    {
-                        // Get information for the first selected cell
-                        DataGridViewCell cell = dgvUpdate.SelectedCells[0];
-                        int selectedRowIndex = cell.RowIndex;
-                        DataGridViewRow selectedRow = dgvUpdate.Rows[selectedRowIndex];
-
-                        // Retrieve the selected update's information
-                        Helper.Update.URL = Convert.ToString(selectedRow.Cells[3].Value);
-                        Helper.Update.PART = Convert.ToString(selectedRow.Cells[0].Value);
-                        Helper.Update.SIZE = Convert.ToString(selectedRow.Cells[1].Value);
-
-                        Logger.LogInformation("Downloading official update (" + Helper.Update.SIZE + ")..");
-                        DownloadSelectedOfficialUpdate();
-                    }
-                    catch (System.Runtime.InteropServices.ExternalException)
-                    {
-                        ShowError("The Clipboard could not be accessed. Please try again.", true);
-                    }
-                }
-                else
-                {
-                    ShowError("Select an update to download.", false);
-                }
-            }
-            else
-            {
-                DialogResult dialogResult = DialogResultYesNo("Cancel Download?");
-                if (dialogResult == DialogResult.Yes)
-                {
-                    CancelDownloadingFile();
-                    EnableTabPages(flatTabControl1);
-                    EnableControls(darkMenuStrip1);
-                    ToolStripSplitButtonTotalPKG.Enabled = true;
-
-                    Helper.Update.Downloading = "no";
-                    downloadSelectedPKGUpdateToolStripMenuItem.Text = "Download PKG file";
-
-                    ShowInformation("The download has been cancelled.", true);
-                }
-            }
-        }
-
-        private void downloadSelectedPKGUpdateToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            InitializedDownloadSelectedOfficialUupdate();
-        }
-
-        public void CancelDownloadingFile()
-        {
-            Helper.Update.client.CancelAsync();
-            Helper.Update.client.Dispose();
-            Helper.Update.Downloading = "2";
+            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(str.ToLower());
         }
 
         private void DisableTabPages(Control con, string name)
@@ -5224,108 +5195,6 @@ namespace PS4PKGTool
             {
                 con.Enabled = true;
             }
-        }
-
-        private void DownloadSelectedOfficialUpdate()
-        {
-            var bg = new BackgroundWorker();
-            bg.DoWork += delegate
-            {
-                foreach (Control tab in flatTabControl1.TabPages)
-                {
-                    tab.Enabled = tab.Name == "tabPage5";
-                }
-
-                ToolStripSplitButtonTotalPKG.Enabled = false;
-                DisableControls(darkMenuStrip1);
-
-                string sourceFile = Helper.Update.URL;
-
-                int pos = Helper.Update.URL.LastIndexOf("/") + 1;
-                string filename = Helper.Update.URL.Substring(pos);
-                string destFile = Path.Combine(appSettings_.OfficialUpdateDownloadDirectory, filename);
-
-                Helper.Update.client = new WebClient();
-
-                Helper.Update.client.DownloadProgressChanged += (sender, e) =>
-                {
-                    double bytesIn = e.BytesReceived;
-                    double totalBytes = e.TotalBytesToReceive;
-                    double percentage = bytesIn / totalBytes * 100;
-
-                    toolStripProgressBar1.Value = (int)Math.Truncate(percentage);
-                    toolStripStatusLabel2.Text = "Downloading update PKG.. (" + percentage.ToString("F0") + "%)";
-                };
-                Helper.Update.client.DownloadFileCompleted += (sender, e) =>
-                {
-                    toolStripProgressBar1.Value = 0;
-                    toolStripStatusLabel2.Text = "...";
-
-                    try
-                    {
-                        if (e.Cancelled)
-                        {
-                            // Handle cancellation
-                            ShowInformation("The download has been cancelled.", true);
-                        }
-                        else if (e.Error != null)
-                        {
-                            // Handle error
-                            ShowError("An error occurred while trying to download the file.", true);
-                        }
-                        else
-                        {
-                            // Handle successful download
-                            Logger.LogInformation("File downloaded.");
-
-                            DialogResult dialogResult = MessageBoxHelper.DialogResultYesNo("File downloaded. Open folder?");
-                            if (dialogResult == DialogResult.Yes)
-                            {
-                                System.Diagnostics.Process.Start(appSettings_.OfficialUpdateDownloadDirectory);
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        // Cleanup
-                        Helper.Update.client.Dispose();
-
-                        // Reset download status
-                        downloadSelectedPKGUpdateToolStripMenuItem.Text = "Download PKG file";
-                        Helper.Update.Downloading = "no";
-
-                        // Enable controls
-                        EnableTabPages(flatTabControl1);
-                        EnableControls(darkMenuStrip1);
-                        ToolStripSplitButtonTotalPKG.Enabled = true;
-                    }
-                };
-
-                toolStripProgressBar1.Maximum = 100;
-
-                try
-                {
-                    // Start the download asynchronously
-                    Helper.Update.client.DownloadFileAsync(new Uri(sourceFile), destFile);
-
-                    downloadSelectedPKGUpdateToolStripMenuItem.Text = "Cancel download";
-                    Helper.Update.Downloading = "yes";
-                }
-                catch (Exception ex)
-                {
-                    // Handle any exceptions that occur during the download initiation
-                    ShowError("An error occurred while initiating the download: " + ex.Message, true);
-                }
-            };
-            bg.RunWorkerCompleted += delegate
-            {
-            };
-            bg.RunWorkerAsync();
-        }
-
-        private string ToTitleCase(string str)
-        {
-            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(str.ToLower());
         }
 
         private void btnViewPKGData_Click(object sender, EventArgs e)

@@ -16,6 +16,9 @@
     <Compile Update="Forms\Manifest Loader\ManifestLoaderPrompt.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\Official Update\OfficialUpdateForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Forms\PKG Change Info Viewer\PKG Change Info Viewer.cs">
       <SubType>Form</SubType>
     </Compile>
