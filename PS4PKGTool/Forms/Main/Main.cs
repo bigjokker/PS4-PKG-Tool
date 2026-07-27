@@ -625,6 +625,7 @@ namespace PS4PKGTool
                 if (_officialUpdateForm == null || _officialUpdateForm.IsDisposed)
                     _officialUpdateForm = new OfficialUpdateForm();
 
+                _officialUpdateForm.SetLogCallback(Log);
                 _officialUpdateForm.LoadUpdate(pkg.Param.TITLEID, pkgType, appSettings_.OfficialUpdateDownloadDirectory);
                 _officialUpdateForm.Show();
                 _officialUpdateForm.BringToFront();
@@ -3054,11 +3055,11 @@ namespace PS4PKGTool
         private void DeletePkg()
         {
             var pkgList = GetSelectedPKGDirectoryList(PKGSelectionType.SELECTED);
-            Log($"Delete: {pkgList.Count} PKG(s)");
             DialogResult dialog = DialogResultYesNo("PKG file will be permanently deleted. This operation cannot be undone. Are you sure you want to continue?");
 
             if (dialog == DialogResult.Yes)
             {
+                Log($"Delete: {pkgList.Count} PKG(s)");
                 PKG.isDeletingPkg = true;
                 toolStripProgressBar1.Visible = true;
                 toolStripProgressBar1.Style = ProgressBarStyle.Marquee;

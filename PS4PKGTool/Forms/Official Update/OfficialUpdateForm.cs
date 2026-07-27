@@ -18,10 +18,16 @@ namespace PS4PKGTool
         private string _downloadDir;
         private BackgroundWorker _downloadWorker;
         private WebRequest _activeRequest;
+        private Action<string> _logCallback;
 
         public OfficialUpdateForm()
         {
             InitializeComponent();
+        }
+
+        public void SetLogCallback(Action<string> logCallback)
+        {
+            _logCallback = logCallback;
         }
 
         public void LoadUpdate(string titleId, string pkgType, string downloadDirectory)
@@ -146,6 +152,7 @@ namespace PS4PKGTool
             {
                 int total = downloads.Count;
                 int done = 0, failed = 0;
+                _logCallback?.Invoke($"Download official update: {total} part(s) for {_currentTitleId}");
 
                 for (int i = 0; i < total; i++)
                 {
@@ -207,6 +214,7 @@ namespace PS4PKGTool
                             }
 
                             done++;
+                            _logCallback?.Invoke($"Download part {i + 1}/{total}: {filename}");
                             bg.ReportProgress(Math.Min((done + failed) * 10000 / total, 10000));
                         }
                     }
@@ -233,11 +241,20 @@ namespace PS4PKGTool
 
                 string finalText;
                 if (bg.CancellationPending)
+                {
                     finalText = "Download stopped.";
+                    _logCallback?.Invoke($"Download official update for {_currentTitleId}: stopped by user.");
+                }
                 else if (failed > 0)
+                {
                     finalText = $"Downloaded {done} file(s). {failed} failed.";
+                    _logCallback?.Invoke($"Download official update for {_currentTitleId}: {done} OK, {failed} failed.");
+                }
                 else
+                {
                     finalText = $"Downloaded {done} file(s).";
+                    _logCallback?.Invoke($"Download official update for {_currentTitleId}: {done} part(s) downloaded.");
+                }
 
                 bg.ReportProgress(10000, finalText);
             };
