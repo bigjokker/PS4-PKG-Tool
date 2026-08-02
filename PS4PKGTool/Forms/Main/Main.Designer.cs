@@ -3591,7 +3591,6 @@ namespace PS4PKGTool
             Controls.Add(label8);
             Controls.Add(label2);
             Font = new System.Drawing.Font("Segoe UI", 9F);
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(3, 2, 3, 2);
             MinimumSize = new System.Drawing.Size(1000, 700);
             Name = "Main";

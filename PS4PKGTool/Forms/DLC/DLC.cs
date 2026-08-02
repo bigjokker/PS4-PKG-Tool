@@ -22,6 +22,7 @@ namespace PS4PKGTool
         {
 
             InitializeComponent();
+            this.Icon = Helper.AppIcon;
             darkDataGridView1.ScrollBars = ScrollBars.Both;
 
             Items = items;

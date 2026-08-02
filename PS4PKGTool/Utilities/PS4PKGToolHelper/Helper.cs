@@ -43,6 +43,22 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public static bool LaunchEmpty { get; set; } = false;
         public static bool IsOperationRunning { get; set; } = false;
 
+        private static Icon _appIcon;
+        /// <summary>PackageIcon.ico extracted from the exe — used by all forms, dialogs and message boxes.</summary>
+        public static Icon AppIcon
+        {
+            get
+            {
+                if (_appIcon == null)
+                {
+                    try { _appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
+                    catch { }
+                    if (_appIcon == null) _appIcon = SystemIcons.Application;
+                }
+                return _appIcon;
+            }
+        }
+
         public static string AppDataDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\";
         public static string OrbisPubCmd = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\orbis-pub-cmd.exe";
         public static string Ps5BcJsonFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\ps5bc.json";

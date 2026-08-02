@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool
 {
@@ -19,6 +20,7 @@ namespace PS4PKGTool
         public PKGChangeInfoViewer(string txt)
         {
             InitializeComponent();
+            this.Icon = Helper.AppIcon;
             xmlContent = txt;
             parseXml();
         }

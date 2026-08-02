@@ -23,6 +23,7 @@ namespace PS4PKGTool
         public OfficialUpdateForm()
         {
             InitializeComponent();
+            this.Icon = Helper.AppIcon;
         }
 
         public void SetLogCallback(Action<string> logCallback)

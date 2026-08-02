@@ -48,6 +48,7 @@ namespace PS4PKGTool
         public ProgramSetting()
         {
             InitializeComponent();
+            this.Icon = AppIcon;
             FormClosing += ProgramSetting_FormClosing;
         }
 
@@ -372,7 +373,7 @@ namespace PS4PKGTool
         private static void ShowTaskbarNotification(string title, string text)
         {
             NotifyIcon notifyIcon = new NotifyIcon();
-            notifyIcon.Icon = SystemIcons.Information; // You can set your own icon here
+            notifyIcon.Icon = AppIcon;
             notifyIcon.Visible = true;
             notifyIcon.BalloonTipTitle = title;
             notifyIcon.BalloonTipText = text;

@@ -1173,7 +1173,6 @@ namespace PS4PKGTool
             Controls.Add(btnSaveClose);
             Font = new System.Drawing.Font("Segoe UI", 9F);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             Name = "ProgramSetting";
             SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;

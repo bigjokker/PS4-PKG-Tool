@@ -100,6 +100,7 @@ namespace PS4PKGTool
         public Main()
         {
             InitializeComponent();
+            this.Icon = AppIcon;
 
             listView1.Columns.AddRange(new ColumnHeader[] { columnHeader7, columnHeader8, columnHeader9, columnHeader10 });
 

@@ -145,7 +145,6 @@ namespace PS4PKGTool
             Controls.Add(lblSummary);
             Font = new Font("Segoe UI", 9F);
             FormBorderStyle = FormBorderStyle.FixedDialog;
-            Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             MinimumSize = new Size(700, 530);
             Name = "OfficialUpdateForm";

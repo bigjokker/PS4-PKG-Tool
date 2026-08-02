@@ -106,7 +106,6 @@ namespace PS4PKGTool
             Controls.Add(darkLabelPath);
             Controls.Add(darkLabelTitle);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "DropFolderPrompt";

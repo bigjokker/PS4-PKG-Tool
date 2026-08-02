@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Windows.Forms;
+using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
 namespace PS4PKGTool
 {
@@ -13,6 +14,7 @@ namespace PS4PKGTool
         public DropFolderPrompt(string folderPath, bool alreadySaved)
         {
             InitializeComponent();
+            this.Icon = Helper.AppIcon;
 
             // Show folder name + parent for context
             string displayPath = folderPath;

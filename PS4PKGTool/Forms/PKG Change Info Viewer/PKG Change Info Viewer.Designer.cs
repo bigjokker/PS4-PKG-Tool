@@ -60,7 +60,6 @@
             ClientSize=new System.Drawing.Size(699, 417);
             Controls.Add(darkDataGridView1);
             Font=new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            Icon=(System.Drawing.Icon)resources.GetObject("$this.Icon");
             Name="PKGChangeInfoViewer";
             StartPosition=System.Windows.Forms.FormStartPosition.CenterParent;
             Text="PKG Change Info Viewer";
