@@ -139,6 +139,8 @@ namespace PS4PKGTool
             managePS4PKGToolStripMenuItem = new ToolStripMenuItem();
             settingstoolStripMenuItem = new ToolStripMenuItem();
             reloadContentToolStripMenuItem = new ToolStripMenuItem();
+            loadFromManifestToolStripMenuItem = new ToolStripMenuItem();
+            emptyListToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator11 = new ToolStripSeparator();
             exitToolStripMenuItem1 = new ToolStripMenuItem();
             toolStripMenuItem144 = new ToolStripMenuItem();
@@ -1303,7 +1305,7 @@ namespace PS4PKGTool
             // fileToolStripMenuItem2
             // 
             fileToolStripMenuItem2.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
-            fileToolStripMenuItem2.DropDownItems.AddRange(new ToolStripItem[] { managePS4PKGToolStripMenuItem, settingstoolStripMenuItem, reloadContentToolStripMenuItem, toolStripSeparator11, exitToolStripMenuItem1 });
+            fileToolStripMenuItem2.DropDownItems.AddRange(new ToolStripItem[] { managePS4PKGToolStripMenuItem, settingstoolStripMenuItem, reloadContentToolStripMenuItem, loadFromManifestToolStripMenuItem, emptyListToolStripMenuItem, toolStripSeparator11, exitToolStripMenuItem1 });
             fileToolStripMenuItem2.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             fileToolStripMenuItem2.Name = "fileToolStripMenuItem2";
             fileToolStripMenuItem2.Size = new System.Drawing.Size(37, 20);
@@ -1337,9 +1339,27 @@ namespace PS4PKGTool
             reloadContentToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
             reloadContentToolStripMenuItem.Text = "Refresh PKG list";
             reloadContentToolStripMenuItem.Click += toolStripMenuItem76_Click;
-            // 
+            //
+            // loadFromManifestToolStripMenuItem
+            //
+            loadFromManifestToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            loadFromManifestToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            loadFromManifestToolStripMenuItem.Name = "loadFromManifestToolStripMenuItem";
+            loadFromManifestToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
+            loadFromManifestToolStripMenuItem.Text = "Load from manifest";
+            loadFromManifestToolStripMenuItem.Click += loadFromManifestToolStripMenuItem_Click;
+            //
+            // emptyListToolStripMenuItem
+            //
+            emptyListToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            emptyListToolStripMenuItem.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            emptyListToolStripMenuItem.Name = "emptyListToolStripMenuItem";
+            emptyListToolStripMenuItem.Size = new System.Drawing.Size(216, 22);
+            emptyListToolStripMenuItem.Text = "Empty list";
+            emptyListToolStripMenuItem.Click += emptyListToolStripMenuItem_Click;
+            //
             // toolStripSeparator11
-            // 
+            //
             toolStripSeparator11.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
             toolStripSeparator11.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             toolStripSeparator11.Margin = new Padding(0, 0, 0, 1);
@@ -3700,6 +3720,8 @@ namespace PS4PKGTool
         private ToolStripMenuItem renameSelectedPkg9ToolStripMenuItem2;
         private ToolStripMenuItem fileToolStripMenuItem2;
         private ToolStripMenuItem reloadContentToolStripMenuItem;
+        private ToolStripMenuItem loadFromManifestToolStripMenuItem;
+        private ToolStripMenuItem emptyListToolStripMenuItem;
         private ToolStripMenuItem exitToolStripMenuItem1;
         private ToolStripMenuItem globalActionToolStripMenuItem;
         private ToolStripMenuItem renameToolStripMenuItem;

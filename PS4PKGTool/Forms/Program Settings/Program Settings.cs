@@ -187,7 +187,6 @@ namespace PS4PKGTool
             appSettings_.pkgDirectoryColumn = Location.Checked;
             appSettings_.pkgBackportColumn = cbBackported.Checked;
             appSettings_.AutoFetchUpdate = cbAutoFetchUpdate.Checked;
-            appSettings_.pkgLatestUpdateColumn = cbAutoFetchUpdate.Checked;
             appSettings_.psvr_neo_ps5bc_check = cbPs5BcCheck.Checked;
 
             appSettings_.LocalServerIp = darkComboBoxServerIP.Text;

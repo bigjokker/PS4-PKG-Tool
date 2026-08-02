@@ -54,7 +54,6 @@ namespace PS4PKGTool.Utilities.Settings
                     writer.WriteLine($"pkg_size_column={settings.pkgsizeColumn}");
                     writer.WriteLine($"pkg_location_column={settings.pkgDirectoryColumn}");
                     writer.WriteLine($"pkg_backport_column={settings.pkgBackportColumn}");
-                    writer.WriteLine($"pkg_latestUpdate_column={settings.pkgLatestUpdateColumn}");
                     writer.WriteLine($"auto_fetch_update={settings.AutoFetchUpdate}");
 
                 }
@@ -240,11 +239,6 @@ namespace PS4PKGTool.Utilities.Settings
                             {
                                 bool.TryParse(line.Substring("pkg_backport_column=".Length), out bool pkg_backport_column);
                                 appSettings_.pkgBackportColumn = pkg_backport_column;
-                            }
-                            else if (line.StartsWith("pkg_latestUpdate_column="))
-                            {
-                                bool.TryParse(line.Substring("pkg_latestUpdate_column=".Length), out bool pkg_latestUpdate_column);
-                                appSettings_.pkgLatestUpdateColumn = pkg_latestUpdate_column;
                             }
                             else if (line.StartsWith("auto_fetch_update="))
                             {

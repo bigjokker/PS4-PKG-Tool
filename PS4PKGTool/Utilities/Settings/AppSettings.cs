@@ -46,7 +46,6 @@ namespace PS4PKGTool.Utilities.Settings
         public bool pkgsizeColumn { get; set; }
         public bool pkgDirectoryColumn { get; set; }
         public bool pkgBackportColumn { get; set; }
-        public bool pkgLatestUpdateColumn { get; set; } = true;
         public bool AutoFetchUpdate { get; set; } = false;
 
 

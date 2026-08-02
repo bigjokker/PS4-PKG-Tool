@@ -1491,6 +1491,60 @@ namespace PS4PKGTool
             }
         }
 
+        /// <summary>
+        /// File → Load from manifest: reload the cached manifest without rescanning directories.
+        /// Falls back to a directory scan if the manifest is invalid or outdated (handled in LoadPKGGridView).
+        /// </summary>
+        private void loadFromManifestToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (!ManifestHelper.ManifestExists())
+            {
+                ShowWarning("No manifest found. Scan a PKG directory first.", false);
+                return;
+            }
+            Logger.LogInformation("Loading PKG list from manifest..");
+            Helper.LoadFromManifest = true;
+            RefreshPkgList();
+        }
+
+        /// <summary>
+        /// File → Empty list: clear the library (grid, grouped view, tree, counters) and the
+        /// manifest cache. PKG files on disk are NOT touched. Mirrors the "Launch empty" startup mode.
+        /// </summary>
+        private void emptyListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (DialogResultYesNo("Clear the PKG list and the cached manifest?\n\nPKG files on disk will NOT be deleted.") != DialogResult.Yes)
+                return;
+
+            Logger.LogInformation("Emptying PKG list..");
+            Helper.LoadFromManifest = false;
+            _detailWorker?.CancelAsync();                       // invalidate in-flight detail loads
+            Interlocked.Increment(ref _trophyLoadVersion);      // invalidate in-flight trophy loads
+            PKG.SelectedPKGFilename = "";
+            PKG.VerifiedPs4PkgList.Clear();
+            PKG.EntryIdList.Clear();
+            PKG.EntryNameList.Clear();
+            PKG.pkgCount = 0;
+            PKG.game = 0;
+            PKG.patch = 0;
+            PKG.addon = 0;
+            PKG.app = 0;
+            PKG.unknown = 0;
+            PKG.official = 0;
+            PKG.fake = 0;
+            PKG.unlockerAddon = 0;
+            _fileSizes.Clear();
+            _pkgDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            PKGTreeView.Nodes.Clear();
+            listView1.Items.Clear();
+            groupedListView?.Clear();
+            ManifestHelper.DeleteManifest();                    // without this the library would resurrect on restart
+            InitializeEmptyGrid();
+            labelDisplayTotalPKG.Text = "Displaying 0 PS4 PKG";
+            toolStripStatusLabel2.Text = "Ready (empty)";
+            Logger.LogInformation("PKG list emptied.");
+        }
+
         private void toolStripMenuItem160_Click(object sender, EventArgs e)
         {
             Tool.OpenWebLink("https://ko-fi.com/pearlxcore");
@@ -2077,6 +2131,8 @@ namespace PS4PKGTool
                 });
                 // Re-attach DataTable to DGV on UI thread
                 this.Invoke((MethodInvoker)delegate { if (scanDt != null) PKGGridView.DataSource = scanDt; });
+                // Apply persisted column visibility (PSVR/Pro Enhanced/PS5 BC/Latest Update must stay hidden by default)
+                UpdateDataGridViewColumnVisibility();
                 SaveManifestAfterScan();
                 PopulateGroupedView();
                 PKGGridView.Sort(PKGGridView.Columns[0], ListSortDirection.Ascending);
@@ -2373,7 +2429,7 @@ namespace PS4PKGTool
                 {
                     PKGGridView.SuspendLayout();
                     PKGGridView.DataSource = dttemp;
-                    for (int i = 9; i <= 11; i++)
+                    for (int i = 10; i <= 12; i++) // PSVR, PS4 Pro Enhanced, PS5 BC (col 9 is Size — keep it)
                         PKGGridView.Columns[i].Visible = appSettings_.psvr_neo_ps5bc_check;
                     foreach (DataGridViewColumn column in PKGGridView.Columns)
                         column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;

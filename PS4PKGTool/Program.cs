@@ -81,7 +81,6 @@ pkg_category_column=True
 pkg_size_column=True
 pkg_location_column=True
 pkg_backport_column=True
-pkg_latestUpdate_column=True
 auto_fetch_update=False";
             File.WriteAllText(SettingFilePath, defaultSettings);
         }
