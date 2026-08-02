@@ -209,7 +209,7 @@ namespace PS4PKGTool
 
                             if (bg.CancellationPending)
                             {
-                                try { File.Delete(outPath); } catch { }
+                                try { File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on cancel: " + ex.Message); }
                                 break;
                             }
 
@@ -220,18 +220,18 @@ namespace PS4PKGTool
                     }
                     catch (WebException wex) when (wex.Status == WebExceptionStatus.RequestCanceled)
                     {
-                        try { File.Delete(outPath); } catch { }
+                        try { File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on WebException: " + ex.Message); }
                         break;
                     }
                     catch
                     {
                         if (bg.CancellationPending)
                         {
-                            try { File.Delete(outPath); } catch { }
+                            try { File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on cancel: " + ex.Message); }
                             break;
                         }
                         failed++;
-                        try { if (File.Exists(outPath)) File.Delete(outPath); } catch { }
+                        try { if (File.Exists(outPath)) File.Delete(outPath); } catch (Exception ex) { Logger.LogWarning("Failed to delete partial download on error: " + ex.Message); }
                     }
                     finally
                     {

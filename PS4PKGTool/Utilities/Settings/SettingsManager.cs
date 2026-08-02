@@ -12,7 +12,7 @@ namespace PS4PKGTool.Utilities.Settings
     public static class SettingsManager
     {
         public static AppSettings appSettings_ = new AppSettings();
-        public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.PS4PKGToolTempDirectory, @"Settings.conf");
+        public static string SettingFilePath = Path.Combine(PS4PKGToolHelper.Helper.AppDataDirectory, @"Settings.conf");
         public static void SaveSettings(AppSettings settings, string filePath)
         {
             try

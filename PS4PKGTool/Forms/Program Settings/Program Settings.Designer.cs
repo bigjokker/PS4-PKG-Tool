@@ -26,6 +26,7 @@ namespace PS4PKGTool
             BGM = new DarkUI.Controls.DarkCheckBox();
             AutoSortRow = new DarkUI.Controls.DarkCheckBox();
             cbAutoFetchUpdate = new DarkUI.Controls.DarkCheckBox();
+            btnOpenAppData = new DarkUI.Controls.DarkButton();
             tabAppearance = new System.Windows.Forms.TabPage();
             grpColumns = new DarkUI.Controls.DarkSectionPanel();
             PKGname = new DarkUI.Controls.DarkCheckBox();
@@ -74,6 +75,14 @@ namespace PS4PKGTool
             darkLabelserveModuleInstalled = new DarkUI.Controls.DarkLabel();
             btnInstalleServerModule = new DarkUI.Controls.DarkButton();
             tabRename = new System.Windows.Forms.TabPage();
+            tabTrophies = new System.Windows.Forms.TabPage();
+            grpTrophyCache = new DarkUI.Controls.DarkSectionPanel();
+            lblTrophyCacheDesc = new DarkUI.Controls.DarkLabel();
+            btnBuildTrophyCache = new DarkUI.Controls.DarkButton();
+            btnCancelTrophyCache = new DarkUI.Controls.DarkButton();
+            btnClearTrophyCache = new DarkUI.Controls.DarkButton();
+            pbTrophyCacheProgress = new System.Windows.Forms.ProgressBar();
+            lblTrophyCacheStatus = new DarkUI.Controls.DarkLabel();
             grpRename = new DarkUI.Controls.DarkSectionPanel();
             darkLabel12 = new DarkUI.Controls.DarkLabel();
             tbCustomNamePattern = new DarkUI.Controls.DarkTextBox();
@@ -109,6 +118,7 @@ namespace PS4PKGTool
             grpNetwork.SuspendLayout();
             grpTools.SuspendLayout();
             tabRename.SuspendLayout();
+            tabTrophies.SuspendLayout();
             grpRename.SuspendLayout();
             SuspendLayout();
             // 
@@ -119,6 +129,7 @@ namespace PS4PKGTool
             settingsTab.Controls.Add(tabAppearance);
             settingsTab.Controls.Add(tabRPI);
             settingsTab.Controls.Add(tabRename);
+            settingsTab.Controls.Add(tabTrophies);
             settingsTab.Font = new System.Drawing.Font("Segoe UI", 9F);
             settingsTab.ItemSize = new System.Drawing.Size(150, 28);
             settingsTab.Location = new System.Drawing.Point(12, 11);
@@ -264,6 +275,7 @@ namespace PS4PKGTool
             grpStartup.Controls.Add(BGM);
             grpStartup.Controls.Add(AutoSortRow);
             grpStartup.Controls.Add(cbAutoFetchUpdate);
+            grpStartup.Controls.Add(btnOpenAppData);
             grpStartup.Location = new System.Drawing.Point(12, 104);
             grpStartup.Name = "grpStartup";
             grpStartup.SectionHeader = "Startup & Behavior";
@@ -302,6 +314,16 @@ namespace PS4PKGTool
             cbAutoFetchUpdate.Size = new System.Drawing.Size(245, 19);
             cbAutoFetchUpdate.TabIndex = 3;
             cbAutoFetchUpdate.Text = "Show Latest Update column & auto-fetch on startup";
+            // 
+            // btnOpenAppData
+            // 
+            btnOpenAppData.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnOpenAppData.Location = new System.Drawing.Point(470, 73);
+            btnOpenAppData.Name = "btnOpenAppData";
+            btnOpenAppData.Size = new System.Drawing.Size(120, 24);
+            btnOpenAppData.TabIndex = 4;
+            btnOpenAppData.Text = "Open App Data";
+            btnOpenAppData.Click += btnOpenAppData_Click;
             // 
             // tabAppearance
             // 
@@ -991,6 +1013,90 @@ namespace PS4PKGTool
             darkLabelNamingPatternExample.Size = new System.Drawing.Size(480, 50);
             darkLabelNamingPatternExample.TabIndex = 5;
             // 
+            // tabTrophies
+            // 
+            tabTrophies.BackColor = System.Drawing.Color.FromArgb(60, 63, 65);
+            tabTrophies.Controls.Add(grpTrophyCache);
+            tabTrophies.Location = new System.Drawing.Point(4, 32);
+            tabTrophies.Name = "tabTrophies";
+            tabTrophies.Size = new System.Drawing.Size(632, 452);
+            tabTrophies.TabIndex = 4;
+            tabTrophies.Text = "Trophies";
+            // 
+            // grpTrophyCache
+            // 
+            grpTrophyCache.Controls.Add(lblTrophyCacheDesc);
+            grpTrophyCache.Controls.Add(btnBuildTrophyCache);
+            grpTrophyCache.Controls.Add(btnCancelTrophyCache);
+            grpTrophyCache.Controls.Add(btnClearTrophyCache);
+            grpTrophyCache.Controls.Add(pbTrophyCacheProgress);
+            grpTrophyCache.Controls.Add(lblTrophyCacheStatus);
+            grpTrophyCache.Location = new System.Drawing.Point(12, 16);
+            grpTrophyCache.Name = "grpTrophyCache";
+            grpTrophyCache.SectionHeader = "Trophy Metadata Cache";
+            grpTrophyCache.Size = new System.Drawing.Size(606, 205);
+            grpTrophyCache.TabIndex = 0;
+            // 
+            // lblTrophyCacheDesc
+            // 
+            lblTrophyCacheDesc.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblTrophyCacheDesc.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblTrophyCacheDesc.Location = new System.Drawing.Point(15, 32);
+            lblTrophyCacheDesc.Name = "lblTrophyCacheDesc";
+            lblTrophyCacheDesc.Size = new System.Drawing.Size(575, 38);
+            lblTrophyCacheDesc.TabIndex = 0;
+            lblTrophyCacheDesc.Text = "Extract NP Communication IDs from PKGs in the configured directories.\r\nCached IDs enable full trophy names and descriptions when a PKG is selected.";
+            // 
+            // btnBuildTrophyCache
+            // 
+            btnBuildTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnBuildTrophyCache.Location = new System.Drawing.Point(15, 78);
+            btnBuildTrophyCache.Name = "btnBuildTrophyCache";
+            btnBuildTrophyCache.Size = new System.Drawing.Size(210, 30);
+            btnBuildTrophyCache.TabIndex = 1;
+            btnBuildTrophyCache.Text = "Build Trophy Metadata Cache";
+            btnBuildTrophyCache.Click += btnBuildTrophyCache_Click;
+            // 
+            // btnCancelTrophyCache
+            // 
+            btnCancelTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnCancelTrophyCache.Location = new System.Drawing.Point(235, 78);
+            btnCancelTrophyCache.Name = "btnCancelTrophyCache";
+            btnCancelTrophyCache.Size = new System.Drawing.Size(105, 30);
+            btnCancelTrophyCache.TabIndex = 2;
+            btnCancelTrophyCache.Text = "Cancel";
+            btnCancelTrophyCache.Enabled = false;
+            btnCancelTrophyCache.Click += btnCancelTrophyCache_Click;
+            // 
+            // btnClearTrophyCache
+            // 
+            btnClearTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
+            btnClearTrophyCache.Location = new System.Drawing.Point(350, 78);
+            btnClearTrophyCache.Name = "btnClearTrophyCache";
+            btnClearTrophyCache.Size = new System.Drawing.Size(120, 30);
+            btnClearTrophyCache.TabIndex = 3;
+            btnClearTrophyCache.Text = "Clear Cache";
+            btnClearTrophyCache.Click += btnClearTrophyCache_Click;
+            // 
+            // pbTrophyCacheProgress
+            // 
+            pbTrophyCacheProgress.Location = new System.Drawing.Point(15, 120);
+            pbTrophyCacheProgress.Name = "pbTrophyCacheProgress";
+            pbTrophyCacheProgress.Size = new System.Drawing.Size(575, 20);
+            pbTrophyCacheProgress.TabIndex = 4;
+            pbTrophyCacheProgress.Minimum = 0;
+            pbTrophyCacheProgress.Maximum = 1;
+            // 
+            // lblTrophyCacheStatus
+            // 
+            lblTrophyCacheStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblTrophyCacheStatus.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            lblTrophyCacheStatus.Location = new System.Drawing.Point(15, 150);
+            lblTrophyCacheStatus.Name = "lblTrophyCacheStatus";
+            lblTrophyCacheStatus.Size = new System.Drawing.Size(575, 42);
+            lblTrophyCacheStatus.TabIndex = 5;
+            lblTrophyCacheStatus.Text = "Cache not checked.";
+            // 
             // btnSaveClose
             // 
             btnSaveClose.Font = new System.Drawing.Font("Segoe UI", 9F);
@@ -1095,13 +1201,14 @@ namespace PS4PKGTool
             grpNetwork.PerformLayout();
             grpTools.ResumeLayout(false);
             tabRename.ResumeLayout(false);
+            tabTrophies.ResumeLayout(false);
             grpRename.ResumeLayout(false);
             grpRename.PerformLayout();
             ResumeLayout(false);
         }
 
         private DarkUI.Controls.DarkTabControl settingsTab;
-        private System.Windows.Forms.TabPage tabGeneral, tabAppearance, tabRPI, tabRename;
+        private System.Windows.Forms.TabPage tabGeneral, tabAppearance, tabRPI, tabRename, tabTrophies;
         private DarkUI.Controls.DarkSectionPanel grpDirectories, grpDirList, grpDownloads, grpStartup;
         private DarkUI.Controls.DarkListBox lbPkgDirectoryList;
         private DarkUI.Controls.DarkCheckBox darkCheckBoxRecursive;
@@ -1110,6 +1217,7 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkTextBox tbOfficialUpdateDownloadFolder;
         private DarkUI.Controls.DarkButton btnOfficialUpdateDownloadFolder;
         private DarkUI.Controls.DarkCheckBox BGM, AutoSortRow, cbAutoFetchUpdate;
+        private DarkUI.Controls.DarkButton btnOpenAppData;
         private DarkUI.Controls.DarkSectionPanel grpColumns, grpColors, grpPS5BC;
         private DarkUI.Controls.DarkCheckBox PKGname, TitleId, ContentId, Region, SystemFirmware, Version, PkgType, Category, Size, Location, cbBackported;
         private DarkUI.Controls.DarkCheckBox PKGColorLabeling;
@@ -1128,6 +1236,10 @@ namespace PS4PKGTool
         private DarkUI.Controls.DarkButton btnPlaceTitle, btnPlaceTitleId, btnPlaceVersion, btnPlaceAppVer, btnPlaceCategory, btnPlaceContentId, btnPlaceRegion, btnPlaceSysVer;
         private DarkUI.Controls.DarkButton darkButton1;
         private DarkUI.Controls.DarkTextBox tbCustomNamePattern;
+        private DarkUI.Controls.DarkSectionPanel grpTrophyCache;
+        private DarkUI.Controls.DarkLabel lblTrophyCacheDesc, lblTrophyCacheStatus;
+        private DarkUI.Controls.DarkButton btnBuildTrophyCache, btnCancelTrophyCache, btnClearTrophyCache;
+        private System.Windows.Forms.ProgressBar pbTrophyCacheProgress;
         private DarkUI.Controls.DarkButton btnSaveClose;
         private DarkUI.Controls.DarkTabControl flatTabControl1;
         private DarkUI.Controls.DarkLabel darkLabel6, darkLabel8, darkLabel10, darkLabel11;

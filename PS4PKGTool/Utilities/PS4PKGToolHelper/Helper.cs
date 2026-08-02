@@ -43,10 +43,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public static bool LaunchEmpty { get; set; } = false;
         public static bool IsOperationRunning { get; set; } = false;
 
-        public static string PS4PKGToolTempDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\";
-        public static string OrbisPubCmd = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\orbis-pub-cmd.exe";
-        public static string Ps5BcJsonFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\ps5bc.json";
-        public static string PS4PKGToolLogFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\PS4PKGToolLog.txt";
+        public static string AppDataDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\";
+        public static string OrbisPubCmd = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\orbis-pub-cmd.exe";
+        public static string Ps5BcJsonFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\ps5bc.json";
+        public static string PS4PKGToolLogFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\PS4PKGToolLog.txt";
 
         public static string RoundBytes(long num)
         {
@@ -76,7 +76,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 public string Backported { get; set; }
             }
 
-            public static string BackportInfoFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\PS4PKGToolTemp\backport.json";
+            public static string BackportInfoFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\backport.json";
             public static string CheckPKGBackported(string pkgFile)
             {
                 try
@@ -87,7 +87,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     var match = list?.FirstOrDefault(f => f.FilePath.Equals(pkgFile, StringComparison.OrdinalIgnoreCase));
                     return match?.Backported;
                 }
-                catch { return null; }
+                catch (Exception ex) { Logger.LogWarning("Error reading backport info: " + ex.Message); return null; }
             }
 
             public static Dictionary<string, string> LoadCache()
@@ -102,7 +102,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         b => b.Backported,
                         StringComparer.OrdinalIgnoreCase);
                 }
-                catch { return null; }
+                catch (Exception ex) { Logger.LogWarning("Error loading backport cache: " + ex.Message); return null; }
             }
 
             public static void SaveData(DarkDataGridView dataGridView)
@@ -945,7 +945,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             {
                 try
                 {
-                    string bgmPath = Path.Combine(PS4PKGToolTempDirectory, "BGM");
+                    string bgmPath = Path.Combine(AppDataDirectory, "BGM");
                     if(!Directory.Exists(bgmPath))
                         Directory.CreateDirectory(bgmPath);
 
@@ -1030,7 +1030,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                             At9Player.Stop();
                         }
 
-                        string BGM_path = Path.Combine(PS4PKGToolTempDirectory, "BGM");
+                        string BGM_path = Path.Combine(AppDataDirectory, "BGM");
                         string at9Path = Path.Combine(BGM_path, PS4_PKG.PS4_Title.SanitizeFileName() + ".AT9");
 
                         if (File.Exists(at9Path))
@@ -1574,8 +1574,8 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 }
 
                 //check if curl.exe exists
-                if (!File.Exists(PS4PKGToolTempDirectory + @"curl.exe"))
-                    return "Missing curl.exe in PS4PKGToolTemp";
+                if (!File.Exists(AppDataDirectory + @"curl.exe"))
+                    return "Missing curl.exe in AppData";
 
 
                 //return if server and ps4 is set up
@@ -1605,7 +1605,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     {
                         StartInfo = new ProcessStartInfo
                         {
-                            FileName = PS4PKGToolTempDirectory + @"curl.exe",
+                            FileName = AppDataDirectory + @"curl.exe",
                             Arguments = "curl --data {\"\"\"title_id\"\"\":\"\"\"" + psfo.TITLEID + "\"\"\"} http://" + appSettings_.Ps4Ip + ":12800/api/is_exists",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
@@ -1625,7 +1625,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                     }
                 }
-                catch { }
+                catch (Exception ex) { Logger.LogWarning("CheckIfPkgInstalled failed: " + ex.Message); }
 
 
                 return json;
@@ -1642,7 +1642,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     {
                         StartInfo = new ProcessStartInfo
                         {
-                            FileName = PS4PKGToolTempDirectory + @"curl.exe",
+                            FileName = AppDataDirectory + @"curl.exe",
                             Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/stop_task --data {\"\"\"task_id\"\"\":" + JSON.SENDPKG.task_id + "}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
@@ -1662,9 +1662,9 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-
+                    Logger.LogWarning("StopTask failed: " + ex.Message);
                 }
 
 
@@ -1679,7 +1679,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 try
                 {
                     Process uninstallappp = new Process();
-                    uninstallappp.StartInfo.FileName = PS4PKGToolTempDirectory + @"curl.exe";
+                    uninstallappp.StartInfo.FileName = AppDataDirectory + @"curl.exe";
                     if (stackTrace.GetFrame(1).GetMethod().Name == "uninstallAddonPkgFromPs4")
                     {
                         uninstallappp.StartInfo.Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_ac --data {\"\"\"content_id\"\"\":\"\"\"" + psfo.ContentID + "\"\"\"}";
@@ -1704,7 +1704,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { Logger.LogWarning("UninstallAddonTheme failed: " + ex.Message); }
 
                 return json;
             }
@@ -1719,7 +1719,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     {
                         StartInfo = new ProcessStartInfo
                         {
-                            FileName = PS4PKGToolTempDirectory + @"curl.exe",
+                            FileName = AppDataDirectory + @"curl.exe",
                             Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_patch --data {\"\"\"title_id\"\"\":\"\"\"" + psfo.TITLEID + "\"\"\"}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
@@ -1740,7 +1740,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { Logger.LogWarning("UninstallPatch failed: " + ex.Message); }
 
                 return json;
             }
@@ -1755,7 +1755,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     {
                         StartInfo = new ProcessStartInfo
                         {
-                            FileName = PS4PKGToolTempDirectory + @"curl.exe",
+                            FileName = AppDataDirectory + @"curl.exe",
                             Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/get_task_progress --data {\"\"\"task_id\"\"\":" + JSON.SENDPKG.task_id + "}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
@@ -1775,7 +1775,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { Logger.LogWarning("GetTaskProgress failed: " + ex.Message); }
 
                 return json;
             }
@@ -1799,7 +1799,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 {
                     StartInfo = new ProcessStartInfo
                     {
-                        FileName = PS4PKGToolTempDirectory + @"curl.exe",
+                        FileName = AppDataDirectory + @"curl.exe",
                         Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/install --data {\"\"\"type\"\"\":\"\"\"direct\"\"\",\"\"\"packages\"\"\":[\"\"\"http://" + appSettings_.LocalServerIp + ":8080/" + tempFilename + "\"\"\"]}",
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
@@ -1831,7 +1831,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     {
                         StartInfo = new ProcessStartInfo
                         {
-                            FileName = PS4PKGToolTempDirectory + @"curl.exe",
+                            FileName = AppDataDirectory + @"curl.exe",
                             Arguments = "curl -v http://" + appSettings_.Ps4Ip + ":12800/api/uninstall_game --data {\"\"\"title_id\"\"\":\"\"\"" + psfo.TitleID + "\"\"\"}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
@@ -1851,7 +1851,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { Logger.LogWarning("UninstallGame failed: " + ex.Message); }
 
                 return json;
 
@@ -1867,7 +1867,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             private static List<string> nameEntryList_ = new List<string>();
             private static List<Image> imageToExtract_ = new List<Image>();
             private static List<string> NameToExtract_ = new List<string>();
-            public static string TrophyTempFolder = PS4PKGToolTempDirectory + @"TrophyFile\";
+            public static string TrophyTempFolder = AppDataDirectory + @"TrophyFile\";
 
             private static string outPath_;
             public static string outPath
@@ -1923,6 +1923,90 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 
                 return destImage;
             }
+        }
+    }
+
+    public static class PkgImageReader
+    {
+        private static readonly byte[] PkgMagic = { 0x7F, 0x43, 0x4E, 0x54 };
+
+        private static readonly Func<byte[], byte[]> RsaDecrypt;
+        private static readonly Func<byte[], byte[], byte[], byte[]> AesDecrypt;
+
+        static PkgImageReader()
+        {
+            var pkgUtilType = typeof(PS4_Tools.PKG.SceneRelated).Assembly.GetType("PS4PkgUtil");
+            var decryptMethod = pkgUtilType.GetMethod("Decrypt", new[] { typeof(byte[]) });
+            RsaDecrypt = (Func<byte[], byte[]>)Delegate.CreateDelegate(typeof(Func<byte[], byte[]>), decryptMethod);
+            var decryptAesMethod = pkgUtilType.GetMethod("DecryptAes", new[] { typeof(byte[]), typeof(byte[]), typeof(byte[]) });
+            AesDecrypt = (Func<byte[], byte[], byte[], byte[]>)Delegate.CreateDelegate(typeof(Func<byte[], byte[], byte[], byte[]>), decryptAesMethod);
+        }
+
+        public static byte[] ReadIcon0Png(string pkgPath) => ReadImageEntry(pkgPath, 4608);
+        public static byte[] ReadPic0Png(string pkgPath) => ReadImageEntry(pkgPath, 4640);
+        public static byte[] ReadPic1Png(string pkgPath) => ReadImageEntry(pkgPath, 4102);
+
+        public static byte[] ReadImageEntry(string pkgPath, uint entryId)
+        {
+            using (var fs = new FileStream(pkgPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var br = new BinaryReader(fs))
+            {
+                var magic = br.ReadBytes(4);
+                if (magic[0] != PkgMagic[0] || magic[1] != PkgMagic[1] || magic[2] != PkgMagic[2] || magic[3] != PkgMagic[3])
+                    return null;
+
+                fs.Seek(0x10, SeekOrigin.Begin);
+                uint entryCount = ReadUInt32BE(br);
+                fs.Seek(0x1C, SeekOrigin.Begin);
+                uint tableOffset = ReadUInt32BE(br);
+
+                fs.Seek(0x2400, SeekOrigin.Begin);
+                var keySeed = RsaDecrypt(br.ReadBytes(256));
+
+                fs.Seek(tableOffset, SeekOrigin.Begin);
+                for (uint i = 0; i < entryCount; i++)
+                {
+                    var entryBytes = br.ReadBytes(32);
+                    uint id = (uint)((entryBytes[0] << 24) | (entryBytes[1] << 16) | (entryBytes[2] << 8) | entryBytes[3]);
+                    uint flags1 = (uint)((entryBytes[8] << 24) | (entryBytes[9] << 16) | (entryBytes[10] << 8) | entryBytes[11]);
+                    uint flags2 = (uint)((entryBytes[12] << 24) | (entryBytes[13] << 16) | (entryBytes[14] << 8) | entryBytes[15]);
+                    uint offset = (uint)((entryBytes[16] << 24) | (entryBytes[17] << 16) | (entryBytes[18] << 8) | entryBytes[19]);
+                    uint size = (uint)((entryBytes[20] << 24) | (entryBytes[21] << 16) | (entryBytes[22] << 8) | entryBytes[23]);
+                    bool isEncrypted = (flags1 & 0x80000000) != 0;
+
+                    if (id == entryId && size > 0)
+                    {
+                        fs.Seek(offset, SeekOrigin.Begin);
+                        byte[] data = br.ReadBytes((int)size);
+
+                        if (isEncrypted)
+                        {
+                            byte[] keyMaterial = new byte[64];
+                            Array.Copy(entryBytes, 4, keyMaterial, 0, 28);
+                            Array.Copy(keySeed, 0, keyMaterial, 32, 32);
+                            using (var sha = SHA256.Create())
+                            {
+                                byte[] hash = sha.ComputeHash(keyMaterial);
+                                byte[] iv = new byte[16];
+                                byte[] key = new byte[16];
+                                Array.Copy(hash, 0, iv, 0, 16);
+                                Array.Copy(hash, 16, key, 0, 16);
+                                data = AesDecrypt(key, iv, data);
+                            }
+                        }
+
+                        return data;
+                    }
+                }
+
+                return null;
+            }
+        }
+
+        private static uint ReadUInt32BE(BinaryReader br)
+        {
+            byte[] buf = br.ReadBytes(4);
+            return (uint)((buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3]);
         }
     }
 }

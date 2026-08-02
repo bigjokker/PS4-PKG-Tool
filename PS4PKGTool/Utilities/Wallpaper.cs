@@ -31,7 +31,7 @@ namespace PS4PKGTool.Util
 
         public static void Set(Style style)
         {
-            string path = $@"{Helper.PS4PKGToolTempDirectory}\Saved image\wallpaper.JPG";
+            string path = $@"{Helper.AppDataDirectory}\Saved image\wallpaper.JPG";
 
             RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true);
             if (style == Style.Stretched)

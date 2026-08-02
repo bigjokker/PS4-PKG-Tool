@@ -22,5 +22,14 @@ namespace TRPViewer
       this.Offset = (long) m_Offset;
       this.Bytes = m_Bytes;
     }
+
+    public Archiver(int index, string name, long offset, long size, byte[] bytes)
+    {
+      Index = index;
+      Name = name;
+      Offset = offset;
+      Size = size;
+      Bytes = bytes;
+    }
   }
 }

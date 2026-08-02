@@ -24,6 +24,8 @@ using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using System.Globalization;
 using DocumentFormat.OpenXml.Office.CoverPageProps;
 using System.Text.RegularExpressions;
+using System.Threading;
+using PS4PKGTool.Utilities.TrophyMetadata;
 
 namespace PS4PKGTool
 {
@@ -39,11 +41,14 @@ namespace PS4PKGTool
         const string REGION = "EU";
         const string SYSTEM_VERSION = "9.50";
         private string HttpServerModulePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\npm\node_modules\http-server";
+        private CancellationTokenSource trophyCacheCancellation;
+        private string TrophyCachePath => Path.Combine(AppDataDirectory, "TrophyMetadata", "np-communication-ids.json");
 
         public bool Refresh = false;
         public ProgramSetting()
         {
             InitializeComponent();
+            FormClosing += ProgramSetting_FormClosing;
         }
 
         private void btnOfficialUpdateDownloadFolder_Click(object sender, EventArgs e)
@@ -140,6 +145,7 @@ namespace PS4PKGTool
             #endregion nodejs&serve
 
             cbPs5BcCheck.CheckedChanged += cbPs5BcCheck_CheckedChanged;
+            UpdateTrophyCacheStatus();
         }
 
         private void btnSaveClose_Click(object sender, EventArgs e)
@@ -354,7 +360,7 @@ namespace PS4PKGTool
             {
                 ShowTaskbarNotification("PS5 Backward Compatibility Status", "PS5 Backward Compatibility Status is being downloaded..");
                 await Tool.DownloadFileFromUrlAsync("https://raw.githubusercontent.com/andshrew/supreme-enigma/master/docs/PS5-BC-Status.json", Ps5BcJsonFile);
-                ShowInformation("PS5 Backward Compatibility Status file downloaded to PS4PKGToolTemp", true);
+                ShowInformation("PS5 Backward Compatibility Status file downloaded to AppData", true);
                 appSettings_.Ps5BcJsonLastDownloadDate = DateTime.Now;
                 labelPs5BcJsonDownloadDate.Text = appSettings_.Ps5BcJsonLastDownloadDate.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
             }
@@ -466,6 +472,126 @@ namespace PS4PKGTool
                 }
 
                 lbPkgDirectoryList.Items.Add(selectedFolder);
+            }
+        }
+
+        private void btnOpenAppData_Click(object sender, EventArgs e)
+        {
+            if (Directory.Exists(AppDataDirectory))
+                Process.Start("explorer.exe", AppDataDirectory);
+        }
+
+        private void ProgramSetting_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (btnBuildTrophyCache != null && !btnBuildTrophyCache.Enabled)
+            {
+                trophyCacheCancellation?.Cancel();
+                lblTrophyCacheStatus.Text = "Cancelling trophy metadata cache build...";
+                e.Cancel = true;
+            }
+        }
+
+        private async void btnBuildTrophyCache_Click(object sender, EventArgs e)
+        {
+            List<string> directories = lbPkgDirectoryList.Items.Cast<string>().ToList();
+            if (directories.Count == 0)
+            {
+                ShowWarning("Add at least one PKG directory before building the trophy metadata cache.", false);
+                return;
+            }
+            if (!File.Exists(OrbisPubCmd))
+            {
+                ShowError("Missing orbis-pub-cmd.exe in AppData.", true);
+                return;
+            }
+
+            trophyCacheCancellation?.Dispose();
+            trophyCacheCancellation = new CancellationTokenSource();
+            btnBuildTrophyCache.Enabled = false;
+            btnClearTrophyCache.Enabled = false;
+            btnCancelTrophyCache.Enabled = true;
+            btnSaveClose.Enabled = false;
+            lblTrophyCacheStatus.Text = "Scanning configured PKG directories...";
+            pbTrophyCacheProgress.Value = 0;
+
+            var progress = new Progress<TrophyCacheProgress>(value =>
+            {
+                pbTrophyCacheProgress.Maximum = Math.Max(1, value.Total);
+                pbTrophyCacheProgress.Value = Math.Min(pbTrophyCacheProgress.Maximum, Math.Max(0, value.Processed));
+                lblTrophyCacheStatus.Text = value.Total == 0
+                    ? value.CurrentFile
+                    : $"{value.Processed}/{value.Total}  {value.CurrentFile}";
+            });
+
+            try
+            {
+                Logger.LogInformation("Building trophy metadata cache from configured PKG directories...");
+                var builder = new TrophyMetadataCacheBuilder();
+                TrophyCacheBuildResult result = await builder.BuildAsync(
+                    directories,
+                    darkCheckBoxRecursive.Checked,
+                    OrbisPubCmd,
+                    TrophyCachePath,
+                    Path.Combine(AppDataDirectory, "TrophyMetadata", "Temp"),
+                    progress,
+                    trophyCacheCancellation.Token);
+
+                string summary = $"PKGs: {result.TotalPackages} | Added: {result.Added} | Cached: {result.AlreadyCached} | " +
+                    $"No trophies: {result.WithoutTrophies} | Duplicates: {result.DuplicateContentIds} | Failed: {result.Failed}";
+                lblTrophyCacheStatus.Text = (result.Cancelled ? "Cancelled. " : "Complete. ") + summary;
+                Logger.LogInformation("Trophy metadata cache: " + lblTrophyCacheStatus.Text);
+                foreach (string error in result.Errors)
+                    Logger.LogWarning("Trophy cache: " + error);
+
+                if (!result.Cancelled)
+                    ShowInformation(summary, true);
+            }
+            catch (Exception ex)
+            {
+                lblTrophyCacheStatus.Text = "Cache build failed: " + ex.Message;
+                Logger.LogError("Failed to build trophy metadata cache", ex);
+                ShowError(lblTrophyCacheStatus.Text, true);
+            }
+            finally
+            {
+                btnBuildTrophyCache.Enabled = true;
+                btnClearTrophyCache.Enabled = true;
+                btnCancelTrophyCache.Enabled = false;
+                btnSaveClose.Enabled = true;
+            }
+        }
+
+        private void btnCancelTrophyCache_Click(object sender, EventArgs e)
+        {
+            trophyCacheCancellation?.Cancel();
+        }
+
+        private void btnClearTrophyCache_Click(object sender, EventArgs e)
+        {
+            if (DialogResultYesNo("Clear every cached NP Communication ID?") != DialogResult.Yes)
+                return;
+            try
+            {
+                new NpCommunicationIdCache(TrophyCachePath).Clear();
+                UpdateTrophyCacheStatus();
+                Logger.LogInformation("Trophy metadata cache cleared.");
+            }
+            catch (Exception ex)
+            {
+                ShowError("Failed to clear trophy metadata cache: " + ex.Message, true);
+            }
+        }
+
+        private void UpdateTrophyCacheStatus()
+        {
+            try
+            {
+                int count = new NpCommunicationIdCache(TrophyCachePath).Count;
+                lblTrophyCacheStatus.Text = $"Cached NP Communication IDs: {count}";
+            }
+            catch (Exception ex)
+            {
+                lblTrophyCacheStatus.Text = "Cache unavailable: " + ex.Message;
             }
         }
     }

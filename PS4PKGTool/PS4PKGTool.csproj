@@ -45,10 +45,12 @@
     <AssemblyTitle>PS4 PKG Tool</AssemblyTitle>
     <Product>PS4 PKG Tool</Product>
     <Copyright>Copyright © pearlxcore</Copyright>
-    <AssemblyVersion>1.5</AssemblyVersion>
+    <!-- Note: GenerateAssemblyInfo=false, so these are not used at build time.
+         The real version attributes live in Properties/AssemblyInfo.cs — keep them in sync. -->
+    <AssemblyVersion>1.7.0.0</AssemblyVersion>
     <StartupObject>PS4PKGTool.Program</StartupObject>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <FileVersion>1.5</FileVersion>
+    <FileVersion>1.7.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Update="Properties\Settings.Designer.cs">
@@ -59,6 +61,74 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="PackageIcon.ico" />
+    <Content Include="AppData\orbis-pub-cmd.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\orbis-pub-cmd.exe</Link>
+    </Content>
+    <Content Include="AppData\orbis-pub-chk.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\orbis-pub-chk.exe</Link>
+    </Content>
+    <Content Include="AppData\orbis-pub-gen.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\orbis-pub-gen.exe</Link>
+    </Content>
+    <Content Include="AppData\orbis-pub-sfo.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\orbis-pub-sfo.exe</Link>
+    </Content>
+    <Content Include="AppData\orbis-pub-trp.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\orbis-pub-trp.exe</Link>
+    </Content>
+    <Content Include="AppData\orbis-pub-prx.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\orbis-pub-prx.dll</Link>
+    </Content>
+    <Content Include="AppData\gengp4_app.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\gengp4_app.exe</Link>
+    </Content>
+    <Content Include="AppData\gengp4_patch.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\gengp4_patch.exe</Link>
+    </Content>
+    <Content Include="AppData\ext\di.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\ext\di.exe</Link>
+    </Content>
+    <Content Include="AppData\ext\libatrac9.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\ext\libatrac9.dll</Link>
+    </Content>
+    <Content Include="AppData\ext\sc.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\ext\sc.exe</Link>
+    </Content>
+    <Content Include="AppData\ext\trp_compare_default.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\ext\trp_compare_default.css</Link>
+    </Content>
+    <Content Include="AppData\PSX-PS2-FPKG\pkg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\PSX-PS2-FPKG\pkg.exe</Link>
+    </Content>
+    <Content Include="AppData\PSX-PS2-FPKG\ext\di.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\PSX-PS2-FPKG\ext\di.exe</Link>
+    </Content>
+    <Content Include="AppData\CyB1K.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\CyB1K.txt</Link>
+    </Content>
+    <Content Include="AppData\readme.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\readme.txt</Link>
+    </Content>
+    <Content Include="AppData\Temp-Folder-Patcher.bat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppData\Temp-Folder-Patcher.bat</Link>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ByteSize" Version="2.1.1" />

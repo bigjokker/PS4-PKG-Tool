@@ -12,6 +12,8 @@ namespace PS4PKGTool.Utilities
     class Logger
     {
         public static string LogFilename { get; set; }
+        public static Action<string> OnLog;
+
         public static void FlushLog()
         {
             File.WriteAllText(Helper.PS4PKGToolLogFile, string.Empty);
@@ -40,21 +42,26 @@ namespace PS4PKGTool.Utilities
             {
                 if (!string.IsNullOrEmpty(msg))
                 {
-                    lock (lockObject) // For thread safety
+                    DateTime now = DateTime.Now;
+                    string shortLabel = level.ToString().Replace("Information", "INFO").Replace("Warning","WARN").Replace("Error","ERR");
+                    string logMessage = $"{now:G} : [{shortLabel}] {msg}";
+                    string displayMessage = $"{now:HH:mm:ss}  [{shortLabel}] {msg}";
+
+                    if (ex != null)
+                    {
+                        logMessage += Environment.NewLine + ex.ToString();
+                        displayMessage += " " + ex.Message;
+                    }
+
+                    lock (lockObject)
                     {
                         using (var sw = new StreamWriter(Helper.PS4PKGToolLogFile, true))
                         {
-                            DateTime now = DateTime.Now;
-                            string logMessage = $"{now:G} : [{level.ToString().Replace("Information", "INFO").Replace("Warning","WARN").Replace("Error","ERR")}] {msg}";
-
-                            if (ex != null)
-                            {
-                                logMessage += Environment.NewLine + ex.ToString();
-                            }
-
                             sw.WriteLine(logMessage);
                         }
                     }
+
+                    OnLog?.Invoke(displayMessage);
                 }
             }
             catch (Exception)

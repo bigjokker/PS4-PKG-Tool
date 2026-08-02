@@ -35,10 +35,10 @@ namespace PS4PKGTool
 
         private static void EnsureSettingsFileExists()
         {
-            if (!Directory.Exists(Helper.PS4PKGToolTempDirectory))
+            if (!Directory.Exists(Helper.AppDataDirectory))
             {
-                Directory.CreateDirectory(Helper.PS4PKGToolTempDirectory);
-                Logger.LogInformation("Creating PS4PKGToolTemp directory...");
+                Directory.CreateDirectory(Helper.AppDataDirectory);
+                Logger.LogInformation("Creating AppData directory...");
             }
 
             if (!File.Exists(SettingFilePath) || new FileInfo(SettingFilePath).Length == 0)

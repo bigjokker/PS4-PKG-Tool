@@ -3,7 +3,29 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
-[assembly: AssemblyInformationalVersion("1.6")]
+// ──────────────────────────────────────────────────────────────
+// VERSION — single source of truth for the app version.
+//   * AssemblyInformationalVersion is what the app displays and
+//     what the GitHub update check compares ("v" + this value).
+//   * Keep the same 1.x format; bump the minor on each feature
+//     release (1.7 → 1.8). Use a patch bump for bugfix-only
+//     releases (1.7 → 1.7.1) — the update checker handles it.
+//   * AssemblyVersion / AssemblyFileVersion must track the same
+//     number so Explorer and the built exe don't disagree.
+//   * The Version / FileVersion properties in PS4PKGTool.csproj
+//     are ignored at build time (GenerateAssemblyInfo=false) —
+//     edit them only to keep the file readable.
+// RELEASE RULES (checked against GitHubUpdate 1.2.0's UpdateChecker):
+//   * Tag the GitHub release exactly "v1.8" (with the "v"). Tags without
+//     "v" also work; tags that are not valid versions (e.g. "latest")
+//     make the update check throw.
+//   * NEVER publish the release marked "Pre-release" — pre-releases are
+//     filtered out and the app will claim it is up to date.
+//   * NEVER publish as a draft — drafts are invisible to the API.
+// ──────────────────────────────────────────────────────────────
+[assembly: AssemblyVersion("1.7.0.0")]
+[assembly: AssemblyFileVersion("1.7.0.0")]
+[assembly: AssemblyInformationalVersion("1.7")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
 // to COM components.  If you need to access a type in this assembly from
