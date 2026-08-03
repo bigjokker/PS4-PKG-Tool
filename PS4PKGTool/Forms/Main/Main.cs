@@ -4710,9 +4710,11 @@ namespace PS4PKGTool
                 List<string> dirList = new List<string>();
 
                 origPath = PKG.SelectedPKGFilename;
-                string dir = Path.GetDirectoryName(origPath);
-                tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                File.Move(origPath, tempPath);
+                // Copy to a short ASCII temp dir so orbis-pub-cmd (non-Unicode)
+                // can read PKGs whose directory path contains full-width or
+                // special characters (e.g. "11-11： Memories Retold").
+                tempPath = Path.Combine(CreateOrbisTempDir("v"), "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
+                File.Copy(origPath, tempPath);
                 renamed = true;
                 string safePkgPath = tempPath;
 
@@ -4836,30 +4838,18 @@ namespace PS4PKGTool
                 {
                     if (renamed && File.Exists(tempPath))
                     {
-                        try
-                        {
-                            if (File.Exists(origPath))
-                                Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + tempPath);
-                            else
-                                File.Move(tempPath, origPath);
-                        }
-                        catch (Exception ex) { Logger.LogError("Failed to restore PKG filename. Recover the PKG from " + tempPath + ": " + ex.Message); }
+                        try { File.Delete(tempPath); } catch { }
+                        try { Directory.Delete(Path.GetDirectoryName(tempPath), true); } catch { }
                     }
                 }
             };
             bg.RunWorkerCompleted += delegate (object sender, RunWorkerCompletedEventArgs e)
             {
-                // Restore original filename
+                // Clean up the temp copy (original PKG was never touched)
                 if (renamed && File.Exists(tempPath))
                 {
-                    try
-                    {
-                        if (File.Exists(origPath))
-                            Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + tempPath);
-                        else
-                            File.Move(tempPath, origPath);
-                    }
-                    catch (Exception ex) { Logger.LogError("Failed to restore PKG filename. Recover the PKG from " + tempPath + ": " + ex.Message); }
+                    try { File.Delete(tempPath); } catch { }
+                    try { Directory.Delete(Path.GetDirectoryName(tempPath), true); } catch { }
                 }
 
                 if (e.Error != null)
