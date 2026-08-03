@@ -60,6 +60,19 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         }
 
         public static string AppDataDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\";
+
+        /// <summary>
+        /// Creates a short ASCII temp directory for orbis-pub-cmd working files.
+        /// The system temp root plus a short name keeps paths under MAX_PATH even for
+        /// games with deep internal structures (e.g. Ultrawings' StreamingAssets schemas).
+        /// The caller must delete the returned directory when done.
+        /// </summary>
+        public static string CreateOrbisTempDir(string tag)
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "p4t_" + tag + "_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
         public static string OrbisPubCmd = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\orbis-pub-cmd.exe";
         public static string Ps5BcJsonFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\ps5bc.json";
         public static string PS4PKGToolLogFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\PS4PKGToolLog.txt";
@@ -1610,6 +1623,20 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 return "OK";
             }
 
+            /// <summary>
+            /// Waits for a curl process with a timeout, draining stdout concurrently so the
+            /// pipe can never deadlock, and killing the process if it stalls. Returns all output.
+            /// </summary>
+            private static string RunCurlProcess(Process proc, int timeoutMs)
+            {
+                Task<string> readTask = proc.StandardOutput.ReadToEndAsync();
+                if (!proc.WaitForExit(timeoutMs))
+                {
+                    try { proc.Kill(); proc.WaitForExit(); } catch { }
+                }
+                return readTask.Result;
+            }
+
             public static dynamic CheckIfPkgInstalled(Param_SFO.PARAM_SFO psfo)
             {
                 dynamic json = null;
@@ -1630,15 +1657,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     };
 
                     checkapp.Start();
-                    checkapp.WaitForExit(7000); // 2 seconds timeout
-                    while (!checkapp.StandardOutput.EndOfStream)
+                    string output = RunCurlProcess(checkapp, 10000);
+                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string line = checkapp.StandardOutput.ReadLine();
-                        if (line != null)
-                        {
-                            json = JsonConvert.DeserializeObject(line);
-                        }
-
+                        json = JsonConvert.DeserializeObject(line);
                     }
                 }
                 catch (Exception ex) { Logger.LogWarning("CheckIfPkgInstalled failed: " + ex.Message); }
@@ -1667,15 +1689,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     };
 
                     stopTask.Start();
-                    stopTask.WaitForExit(7000); // 2 seconds timeout
-                    while (!stopTask.StandardOutput.EndOfStream)
+                    string output = RunCurlProcess(stopTask, 10000);
+                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string line = stopTask.StandardOutput.ReadLine();
-                        if (line != string.Empty)
-                        {
-                            json = JsonConvert.DeserializeObject(line);
-
-                        }
+                        json = JsonConvert.DeserializeObject(line);
                     }
                 }
                 catch (Exception ex)
@@ -1709,15 +1726,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     uninstallappp.StartInfo.CreateNoWindow = true;
 
                     uninstallappp.Start();
-                    uninstallappp.WaitForExit(); // cant set timeout, uninstall time is vary
-
-                    while (!uninstallappp.StandardOutput.EndOfStream)
+                    string output = RunCurlProcess(uninstallappp, 30000); // uninstall can take a while
+                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string line = uninstallappp.StandardOutput.ReadLine();
-                        if (line != string.Empty)
-                        {
-                            json = JsonConvert.DeserializeObject(line);
-                        }
+                        json = JsonConvert.DeserializeObject(line);
                     }
                 }
                 catch (Exception ex) { Logger.LogWarning("UninstallAddonTheme failed: " + ex.Message); }
@@ -1744,16 +1756,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     };
 
                     uninstallappp.Start();
-                    uninstallappp.WaitForExit(); // cant set timeout, uninstall time is vary
-
-                    while (!uninstallappp.StandardOutput.EndOfStream)
+                    string output = RunCurlProcess(uninstallappp, 30000); // uninstall can take a while
+                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string line = uninstallappp.StandardOutput.ReadLine();
-                        if (line != string.Empty)
-                        {
-                            json = JsonConvert.DeserializeObject(line);
-
-                        }
+                        json = JsonConvert.DeserializeObject(line);
                     }
                 }
                 catch (Exception ex) { Logger.LogWarning("UninstallPatch failed: " + ex.Message); }
@@ -1780,15 +1786,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     };
 
                     taskProgress.Start();
-                    taskProgress.WaitForExit();
-                    while (!taskProgress.StandardOutput.EndOfStream)
+                    string output = RunCurlProcess(taskProgress, 10000);
+                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string line = taskProgress.StandardOutput.ReadLine();
-                        if (line != string.Empty)
-                        {
-                            json = JsonConvert.DeserializeObject(line);
-
-                        }
+                        json = JsonConvert.DeserializeObject(line);
                     }
                 }
                 catch (Exception ex) { Logger.LogWarning("GetTaskProgress failed: " + ex.Message); }
@@ -1824,15 +1825,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 };
 
                 sendPKG.Start();
-                sendPKG.WaitForExit(7000); // 2 seconds timeout
-
-                while (!sendPKG.StandardOutput.EndOfStream)
+                string output = RunCurlProcess(sendPKG, 10000);
+                foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                 {
-                    string text = sendPKG.StandardOutput.ReadLine();
-                    if (text != string.Empty)
-                    {
-                        json = JsonConvert.DeserializeObject(text);
-                    }
+                    json = JsonConvert.DeserializeObject(line);
                 }
 
                 return json;
@@ -1856,15 +1852,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     };
 
                     uninstallappp.Start();
-
-                    while (!uninstallappp.StandardOutput.EndOfStream)
+                    string output = RunCurlProcess(uninstallappp, 30000); // uninstall can take a while
+                    foreach (string line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string line = uninstallappp.StandardOutput.ReadLine();
-                        if (line != string.Empty)
-                        {
-                            json = JsonConvert.DeserializeObject(line);
-
-                        }
+                        json = JsonConvert.DeserializeObject(line);
                     }
                 }
                 catch (Exception ex) { Logger.LogWarning("UninstallGame failed: " + ex.Message); }

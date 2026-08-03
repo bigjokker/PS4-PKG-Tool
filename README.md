@@ -1,6 +1,7 @@
 # PS4 PKG Tool
 
 [![Github All Releases](https://img.shields.io/github/downloads/pearlxcore/PS4-PKG-Tool/total.svg)]()
+[![License](https://img.shields.io/github/license/pearlxcore/PS4-PKG-Tool.svg)](LICENSE)
 
 This tool allows us to display PS4 PKG library, manage and perform various operations on PS4 PKG.  
 Suggestions are welcome. Report any bugs [here](https://github.com/pearlxcore/PS4-PKG-Tool/issues).
@@ -8,7 +9,7 @@ Suggestions are welcome. Report any bugs [here](https://github.com/pearlxcore/PS
 **This is not a software which allows you to get free PS4 game.**
 
 # Requirement
-- [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
+- [.NET 10](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 
 # Features
 - Scan and view your collection of PS4 PKG library in grid view.
@@ -60,3 +61,6 @@ https://github.com/pearlxcore/PS4-PKG-Tool/releases
 - [leecherman](https://sites.google.com/site/theleecherman/)
 - [andshrew](https://github.com/andshrew)
 - Sony <3
+
+# License
+[GNU General Public License v3.0](LICENSE) — see the [LICENSE](LICENSE) file for details.

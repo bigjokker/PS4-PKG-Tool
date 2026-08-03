@@ -8,7 +8,6 @@ namespace PS4PKGTool
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ProgramSetting));
             settingsTab = new DarkUI.Controls.DarkTabControl();
             tabGeneral = new System.Windows.Forms.TabPage();
             grpDirectories = new DarkUI.Controls.DarkSectionPanel();
@@ -75,20 +74,10 @@ namespace PS4PKGTool
             darkLabelserveModuleInstalled = new DarkUI.Controls.DarkLabel();
             btnInstalleServerModule = new DarkUI.Controls.DarkButton();
             tabRename = new System.Windows.Forms.TabPage();
-            tabTrophies = new System.Windows.Forms.TabPage();
-            grpTrophyCache = new DarkUI.Controls.DarkSectionPanel();
-            lblTrophyCacheDesc = new DarkUI.Controls.DarkLabel();
-            btnBuildTrophyCache = new DarkUI.Controls.DarkButton();
-            btnCancelTrophyCache = new DarkUI.Controls.DarkButton();
-            btnClearTrophyCache = new DarkUI.Controls.DarkButton();
-            pbTrophyCacheProgress = new System.Windows.Forms.ProgressBar();
-            lblTrophyCacheStatus = new DarkUI.Controls.DarkLabel();
             grpRename = new DarkUI.Controls.DarkSectionPanel();
             darkLabel12 = new DarkUI.Controls.DarkLabel();
             tbCustomNamePattern = new DarkUI.Controls.DarkTextBox();
             darkLabelPlaceholderHint = new DarkUI.Controls.DarkLabel();
-            darkButton1 = new DarkUI.Controls.DarkButton();
-            darkLabelNamingPatternExample = new DarkUI.Controls.DarkLabel();
             btnPlaceTitle = new DarkUI.Controls.DarkButton();
             btnPlaceTitleId = new DarkUI.Controls.DarkButton();
             btnPlaceVersion = new DarkUI.Controls.DarkButton();
@@ -97,6 +86,16 @@ namespace PS4PKGTool
             btnPlaceContentId = new DarkUI.Controls.DarkButton();
             btnPlaceRegion = new DarkUI.Controls.DarkButton();
             btnPlaceSysVer = new DarkUI.Controls.DarkButton();
+            darkButton1 = new DarkUI.Controls.DarkButton();
+            darkLabelNamingPatternExample = new DarkUI.Controls.DarkLabel();
+            tabTrophies = new System.Windows.Forms.TabPage();
+            grpTrophyCache = new DarkUI.Controls.DarkSectionPanel();
+            lblTrophyCacheDesc = new DarkUI.Controls.DarkLabel();
+            btnBuildTrophyCache = new DarkUI.Controls.DarkButton();
+            btnCancelTrophyCache = new DarkUI.Controls.DarkButton();
+            btnClearTrophyCache = new DarkUI.Controls.DarkButton();
+            pbTrophyCacheProgress = new System.Windows.Forms.ProgressBar();
+            lblTrophyCacheStatus = new DarkUI.Controls.DarkLabel();
             btnSaveClose = new DarkUI.Controls.DarkButton();
             flatTabControl1 = new DarkUI.Controls.DarkTabControl();
             darkLabel6 = new DarkUI.Controls.DarkLabel();
@@ -118,8 +117,9 @@ namespace PS4PKGTool
             grpNetwork.SuspendLayout();
             grpTools.SuspendLayout();
             tabRename.SuspendLayout();
-            tabTrophies.SuspendLayout();
             grpRename.SuspendLayout();
+            tabTrophies.SuspendLayout();
+            grpTrophyCache.SuspendLayout();
             SuspendLayout();
             // 
             // settingsTab
@@ -127,9 +127,9 @@ namespace PS4PKGTool
             settingsTab.AllowDrop = true;
             settingsTab.Controls.Add(tabGeneral);
             settingsTab.Controls.Add(tabAppearance);
-            settingsTab.Controls.Add(tabRPI);
-            settingsTab.Controls.Add(tabRename);
             settingsTab.Controls.Add(tabTrophies);
+            settingsTab.Controls.Add(tabRename);
+            settingsTab.Controls.Add(tabRPI);
             settingsTab.Font = new System.Drawing.Font("Segoe UI", 9F);
             settingsTab.ItemSize = new System.Drawing.Size(150, 28);
             settingsTab.Location = new System.Drawing.Point(12, 11);
@@ -311,7 +311,7 @@ namespace PS4PKGTool
             cbAutoFetchUpdate.ForeColor = System.Drawing.Color.Gainsboro;
             cbAutoFetchUpdate.Location = new System.Drawing.Point(15, 76);
             cbAutoFetchUpdate.Name = "cbAutoFetchUpdate";
-            cbAutoFetchUpdate.Size = new System.Drawing.Size(245, 19);
+            cbAutoFetchUpdate.Size = new System.Drawing.Size(293, 19);
             cbAutoFetchUpdate.TabIndex = 3;
             cbAutoFetchUpdate.Text = "Show Latest Update column & auto-fetch on startup";
             // 
@@ -489,7 +489,6 @@ namespace PS4PKGTool
             cbBackported.TabIndex = 10;
             cbBackported.Text = "Backported";
             // 
-            //
             // grpColors
             // 
             grpColors.Controls.Add(PKGColorLabeling);
@@ -869,7 +868,7 @@ namespace PS4PKGTool
             tabRename.Text = "PKG Rename";
             // 
             // grpRename
-            //
+            // 
             grpRename.Controls.Add(darkLabel12);
             grpRename.Controls.Add(tbCustomNamePattern);
             grpRename.Controls.Add(darkLabelPlaceholderHint);
@@ -886,11 +885,11 @@ namespace PS4PKGTool
             grpRename.Location = new System.Drawing.Point(12, 16);
             grpRename.Name = "grpRename";
             grpRename.SectionHeader = "Custom Rename Format";
-            grpRename.Size = new System.Drawing.Size(600, 245);
+            grpRename.Size = new System.Drawing.Size(600, 285);
             grpRename.TabIndex = 0;
-            //
+            // 
             // darkLabel12
-            //
+            // 
             darkLabel12.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             darkLabel12.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             darkLabel12.Location = new System.Drawing.Point(15, 32);
@@ -898,18 +897,18 @@ namespace PS4PKGTool
             darkLabel12.Size = new System.Drawing.Size(570, 20);
             darkLabel12.TabIndex = 0;
             darkLabel12.Text = "Format:  (files are renamed using this pattern when you Rename PKG)";
-            //
+            // 
             // tbCustomNamePattern
-            //
+            // 
             tbCustomNamePattern.Font = new System.Drawing.Font("Consolas", 10F);
             tbCustomNamePattern.Location = new System.Drawing.Point(15, 55);
             tbCustomNamePattern.Name = "tbCustomNamePattern";
-            tbCustomNamePattern.Size = new System.Drawing.Size(570, 27);
+            tbCustomNamePattern.Size = new System.Drawing.Size(570, 23);
             tbCustomNamePattern.TabIndex = 1;
             tbCustomNamePattern.TextChanged += tbCustomNamePattern_TextChanged;
-            //
+            // 
             // darkLabelPlaceholderHint
-            //
+            // 
             darkLabelPlaceholderHint.Font = new System.Drawing.Font("Segoe UI", 8F);
             darkLabelPlaceholderHint.ForeColor = System.Drawing.Color.FromArgb(160, 160, 160);
             darkLabelPlaceholderHint.Location = new System.Drawing.Point(15, 88);
@@ -917,85 +916,97 @@ namespace PS4PKGTool
             darkLabelPlaceholderHint.Size = new System.Drawing.Size(570, 16);
             darkLabelPlaceholderHint.TabIndex = 2;
             darkLabelPlaceholderHint.Text = "Click a button below to insert that value into the format:";
-            //
-            // btnPlaceTitle — row 1, cols 1-4
-            //
+            // 
+            // btnPlaceTitle
+            // 
             btnPlaceTitle.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceTitle.Location = new System.Drawing.Point(15, 108);
             btnPlaceTitle.Name = "btnPlaceTitle";
             btnPlaceTitle.Size = new System.Drawing.Size(135, 26);
             btnPlaceTitle.TabIndex = 10;
-            btnPlaceTitle.Text = "{TITLE}";
             btnPlaceTitle.Tag = "{TITLE}";
+            btnPlaceTitle.Text = "{TITLE}";
             btnPlaceTitle.Click += PlaceholderButton_Click;
-            //
+            // 
+            // btnPlaceTitleId
+            // 
             btnPlaceTitleId.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceTitleId.Location = new System.Drawing.Point(160, 108);
             btnPlaceTitleId.Name = "btnPlaceTitleId";
             btnPlaceTitleId.Size = new System.Drawing.Size(135, 26);
             btnPlaceTitleId.TabIndex = 11;
-            btnPlaceTitleId.Text = "{TITLE_ID}";
             btnPlaceTitleId.Tag = "{TITLE_ID}";
+            btnPlaceTitleId.Text = "{TITLE_ID}";
             btnPlaceTitleId.Click += PlaceholderButton_Click;
-            //
+            // 
+            // btnPlaceVersion
+            // 
             btnPlaceVersion.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceVersion.Location = new System.Drawing.Point(305, 108);
             btnPlaceVersion.Name = "btnPlaceVersion";
             btnPlaceVersion.Size = new System.Drawing.Size(135, 26);
             btnPlaceVersion.TabIndex = 12;
-            btnPlaceVersion.Text = "{VERSION}";
             btnPlaceVersion.Tag = "{VERSION}";
+            btnPlaceVersion.Text = "{VERSION}";
             btnPlaceVersion.Click += PlaceholderButton_Click;
-            //
+            // 
+            // btnPlaceAppVer
+            // 
             btnPlaceAppVer.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceAppVer.Location = new System.Drawing.Point(450, 108);
             btnPlaceAppVer.Name = "btnPlaceAppVer";
             btnPlaceAppVer.Size = new System.Drawing.Size(135, 26);
             btnPlaceAppVer.TabIndex = 13;
-            btnPlaceAppVer.Text = "{APP_VERSION}";
             btnPlaceAppVer.Tag = "{APP_VERSION}";
+            btnPlaceAppVer.Text = "{APP_VERSION}";
             btnPlaceAppVer.Click += PlaceholderButton_Click;
-            //
-            // btnPlaceCategory — row 2, cols 1-4
-            //
+            // 
+            // btnPlaceCategory
+            // 
             btnPlaceCategory.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceCategory.Location = new System.Drawing.Point(15, 140);
             btnPlaceCategory.Name = "btnPlaceCategory";
             btnPlaceCategory.Size = new System.Drawing.Size(135, 26);
             btnPlaceCategory.TabIndex = 14;
-            btnPlaceCategory.Text = "{CATEGORY}";
             btnPlaceCategory.Tag = "{CATEGORY}";
+            btnPlaceCategory.Text = "{CATEGORY}";
             btnPlaceCategory.Click += PlaceholderButton_Click;
-            //
+            // 
+            // btnPlaceContentId
+            // 
             btnPlaceContentId.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceContentId.Location = new System.Drawing.Point(160, 140);
             btnPlaceContentId.Name = "btnPlaceContentId";
             btnPlaceContentId.Size = new System.Drawing.Size(135, 26);
             btnPlaceContentId.TabIndex = 15;
-            btnPlaceContentId.Text = "{CONTENT_ID}";
             btnPlaceContentId.Tag = "{CONTENT_ID}";
+            btnPlaceContentId.Text = "{CONTENT_ID}";
             btnPlaceContentId.Click += PlaceholderButton_Click;
-            //
+            // 
+            // btnPlaceRegion
+            // 
             btnPlaceRegion.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceRegion.Location = new System.Drawing.Point(305, 140);
             btnPlaceRegion.Name = "btnPlaceRegion";
             btnPlaceRegion.Size = new System.Drawing.Size(135, 26);
             btnPlaceRegion.TabIndex = 16;
-            btnPlaceRegion.Text = "{REGION}";
             btnPlaceRegion.Tag = "{REGION}";
+            btnPlaceRegion.Text = "{REGION}";
             btnPlaceRegion.Click += PlaceholderButton_Click;
-            //
+            // 
+            // btnPlaceSysVer
+            // 
             btnPlaceSysVer.Font = new System.Drawing.Font("Segoe UI", 9F);
             btnPlaceSysVer.Location = new System.Drawing.Point(450, 140);
             btnPlaceSysVer.Name = "btnPlaceSysVer";
             btnPlaceSysVer.Size = new System.Drawing.Size(135, 26);
             btnPlaceSysVer.TabIndex = 17;
-            btnPlaceSysVer.Text = "{SYSTEM_VERSION}";
             btnPlaceSysVer.Tag = "{SYSTEM_VERSION}";
+            btnPlaceSysVer.Text = "{SYSTEM_VERSION}";
             btnPlaceSysVer.Click += PlaceholderButton_Click;
-            //
-            // darkButton1 — Clear
-            //
+            // 
+            // darkButton1
+            // 
             darkButton1.Font = new System.Drawing.Font("Segoe UI", 9F);
             darkButton1.Location = new System.Drawing.Point(15, 176);
             darkButton1.Name = "darkButton1";
@@ -1003,14 +1014,14 @@ namespace PS4PKGTool
             darkButton1.TabIndex = 18;
             darkButton1.Text = "Clear";
             darkButton1.Click += darkButton1_Click;
-            //
+            // 
             // darkLabelNamingPatternExample
-            //
+            // 
             darkLabelNamingPatternExample.Font = new System.Drawing.Font("Segoe UI", 10F);
             darkLabelNamingPatternExample.ForeColor = System.Drawing.Color.FromArgb(180, 220, 180);
-            darkLabelNamingPatternExample.Location = new System.Drawing.Point(105, 180);
+            darkLabelNamingPatternExample.Location = new System.Drawing.Point(15, 213);
             darkLabelNamingPatternExample.Name = "darkLabelNamingPatternExample";
-            darkLabelNamingPatternExample.Size = new System.Drawing.Size(480, 50);
+            darkLabelNamingPatternExample.Size = new System.Drawing.Size(570, 50);
             darkLabelNamingPatternExample.TabIndex = 5;
             // 
             // tabTrophies
@@ -1065,7 +1076,6 @@ namespace PS4PKGTool
             btnCancelTrophyCache.Size = new System.Drawing.Size(105, 30);
             btnCancelTrophyCache.TabIndex = 2;
             btnCancelTrophyCache.Text = "Cancel";
-            btnCancelTrophyCache.Enabled = false;
             btnCancelTrophyCache.Click += btnCancelTrophyCache_Click;
             // 
             // btnClearTrophyCache
@@ -1081,11 +1091,10 @@ namespace PS4PKGTool
             // pbTrophyCacheProgress
             // 
             pbTrophyCacheProgress.Location = new System.Drawing.Point(15, 120);
+            pbTrophyCacheProgress.Maximum = 1;
             pbTrophyCacheProgress.Name = "pbTrophyCacheProgress";
             pbTrophyCacheProgress.Size = new System.Drawing.Size(575, 20);
             pbTrophyCacheProgress.TabIndex = 4;
-            pbTrophyCacheProgress.Minimum = 0;
-            pbTrophyCacheProgress.Maximum = 1;
             // 
             // lblTrophyCacheStatus
             // 
@@ -1200,9 +1209,10 @@ namespace PS4PKGTool
             grpNetwork.PerformLayout();
             grpTools.ResumeLayout(false);
             tabRename.ResumeLayout(false);
-            tabTrophies.ResumeLayout(false);
             grpRename.ResumeLayout(false);
             grpRename.PerformLayout();
+            tabTrophies.ResumeLayout(false);
+            grpTrophyCache.ResumeLayout(false);
             ResumeLayout(false);
         }
 
