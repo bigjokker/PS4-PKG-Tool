@@ -129,10 +129,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>AppData\Temp-Folder-Patcher.bat</Link>
     </Content>
-    <Content Include="..\TreeView Icon\*.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>TreeView Icon\%(Filename)%(Extension)</Link>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ByteSize" Version="2.1.1" />

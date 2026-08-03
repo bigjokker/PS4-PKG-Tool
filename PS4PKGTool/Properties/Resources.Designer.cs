@@ -139,5 +139,82 @@ namespace PS4PKGTool.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
+
+        internal static System.Drawing.Bitmap tv_audio {
+            get {
+                object obj = ResourceManager.GetObject("tv_audio", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_binary {
+            get {
+                object obj = ResourceManager.GetObject("tv_binary", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_code {
+            get {
+                object obj = ResourceManager.GetObject("tv_code", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_config {
+            get {
+                object obj = ResourceManager.GetObject("tv_config", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_document {
+            get {
+                object obj = ResourceManager.GetObject("tv_document", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_file_unknown {
+            get {
+                object obj = ResourceManager.GetObject("tv_file_unknown", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_folder {
+            get {
+                object obj = ResourceManager.GetObject("tv_folder", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_folder_open {
+            get {
+                object obj = ResourceManager.GetObject("tv_folder_open", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_image {
+            get {
+                object obj = ResourceManager.GetObject("tv_image", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_package {
+            get {
+                object obj = ResourceManager.GetObject("tv_package", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        internal static System.Drawing.Bitmap tv_video {
+            get {
+                object obj = ResourceManager.GetObject("tv_video", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
     }
 }

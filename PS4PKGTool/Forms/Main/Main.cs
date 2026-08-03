@@ -171,24 +171,25 @@ namespace PS4PKGTool
             tbFilterTreeView.TextChanged += (_, _) => ApplyFilter();
             btnClearFilter.Click += (_, _) => { tbFilterTreeView.Text = ""; };
 
-            // Load treeview file-type icons
+            // Load treeview file-type icons from embedded resources
             try
             {
-                string iconDir = Path.Combine(AppContext.BaseDirectory, "TreeView Icon");
-                if (Directory.Exists(iconDir))
+                var icons = new (string key, Bitmap bmp)[]
                 {
-                    string[] ordered = { "folder", "document", "image", "config", "binary",
-                                     "folder-open", "audio", "file-unknown", "package", "video", "code" };
-                    for (int i = 0; i < ordered.Length; i++)
-                    {
-                        string path = Path.Combine(iconDir, ordered[i] + ".png");
-                        if (File.Exists(path))
-                        {
-                            using var bmp = new Bitmap(path);
-                            imageList1.Images.Add(ordered[i], new Bitmap(bmp));
-                        }
-                    }
-                }
+                    ("folder",       Properties.Resources.tv_folder),
+                    ("document",     Properties.Resources.tv_document),
+                    ("image",        Properties.Resources.tv_image),
+                    ("config",       Properties.Resources.tv_config),
+                    ("binary",       Properties.Resources.tv_binary),
+                    ("folder-open",  Properties.Resources.tv_folder_open),
+                    ("audio",        Properties.Resources.tv_audio),
+                    ("file-unknown", Properties.Resources.tv_file_unknown),
+                    ("package",      Properties.Resources.tv_package),
+                    ("video",        Properties.Resources.tv_video),
+                    ("code",         Properties.Resources.tv_code),
+                };
+                foreach (var (key, bmp) in icons)
+                    imageList1.Images.Add(key, new Bitmap(bmp));
             }
             catch (Exception ex) { Logger.LogWarning($"Icon load: {ex.Message}"); }
 
