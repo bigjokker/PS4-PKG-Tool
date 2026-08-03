@@ -72,14 +72,14 @@ namespace PS4PKGTool
             this.lblCredits.ForeColor = Color.FromArgb(160, 160, 160);
             this.lblCredits.Location = new Point(20, 104);
             this.lblCredits.Name = "lblCredits";
-            this.lblCredits.Size = new Size(360, 40);
-            this.lblCredits.Text = "Credit to Robin Perris (DarkUI),\r\nxXxTheDarkprogramerxXx, Maxton, LMAN, Andshrew";
+            this.lblCredits.Size = new Size(360, 60);
+            this.lblCredits.Text = "Credit to Robin Perris (DarkUI),\r\nxXxTheDarkprogramerxXx, Maxton (RIP), leecherman, Andshrew,\r\nSony <3";
             //
             // lblLicense
             //
             this.lblLicense.Font = new Font("Segoe UI", 9F);
             this.lblLicense.ForeColor = Color.FromArgb(120, 120, 120);
-            this.lblLicense.Location = new Point(20, 148);
+            this.lblLicense.Location = new Point(20, 170);
             this.lblLicense.Name = "lblLicense";
             this.lblLicense.Size = new Size(360, 20);
             this.lblLicense.Text = "Licensed under the GNU General Public License v3.0 (GPL-3.0)";
@@ -87,7 +87,7 @@ namespace PS4PKGTool
             // btnGitHub
             //
             this.btnGitHub.Font = new Font("Segoe UI", 9F);
-            this.btnGitHub.Location = new Point(20, 182);
+            this.btnGitHub.Location = new Point(20, 204);
             this.btnGitHub.Name = "btnGitHub";
             this.btnGitHub.Size = new Size(85, 30);
             this.btnGitHub.TabIndex = 0;
@@ -97,7 +97,7 @@ namespace PS4PKGTool
             // btnKofi
             //
             this.btnKofi.Font = new Font("Segoe UI", 9F);
-            this.btnKofi.Location = new Point(112, 182);
+            this.btnKofi.Location = new Point(112, 204);
             this.btnKofi.Name = "btnKofi";
             this.btnKofi.Size = new Size(85, 30);
             this.btnKofi.TabIndex = 1;
@@ -107,7 +107,7 @@ namespace PS4PKGTool
             // btnBug
             //
             this.btnBug.Font = new Font("Segoe UI", 9F);
-            this.btnBug.Location = new Point(204, 182);
+            this.btnBug.Location = new Point(204, 204);
             this.btnBug.Name = "btnBug";
             this.btnBug.Size = new Size(85, 30);
             this.btnBug.TabIndex = 2;
@@ -117,7 +117,7 @@ namespace PS4PKGTool
             // btnClose
             //
             this.btnClose.Font = new Font("Segoe UI", 9F);
-            this.btnClose.Location = new Point(296, 182);
+            this.btnClose.Location = new Point(296, 204);
             this.btnClose.Name = "btnClose";
             this.btnClose.Size = new Size(85, 30);
             this.btnClose.TabIndex = 3;
@@ -127,7 +127,7 @@ namespace PS4PKGTool
             // AboutForm
             //
             this.AutoScaleMode = AutoScaleMode.Dpi;
-            this.ClientSize = new Size(400, 228);
+            this.ClientSize = new Size(400, 250);
             this.Controls.Add(this.btnClose);
             this.Controls.Add(this.btnBug);
             this.Controls.Add(this.btnKofi);

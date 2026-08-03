@@ -56,7 +56,6 @@ namespace PS4PKGTool
         private MemoryMappedFile pkgFile;
         private dynamic send_pkg_json;
         private string TEMPFILENAMESENDPKG;
-        private bool runworker = false;
         private bool renameBackFile;
         internal static string filenameDLC;
         private static string ApplicationVersion { get; set; }
@@ -80,7 +79,6 @@ namespace PS4PKGTool
         [DllImport("user32.dll")]
         private static extern bool ChangeWindowMessageFilter(uint msg, uint flags);
 
-        public Form form_;
         private byte[] old_byte;
 
         public static string GetApplicationVersion()
@@ -4015,7 +4013,6 @@ namespace PS4PKGTool
                     EnableControls_PkgSender();
                     EnableTabPages(flatTabControl1);
                     EnableControls(darkMenuStrip1);
-                    runworker = true;
                     toolStripStatusLabel2.Text = "...";
                     toolStripProgressBar1.Value = 0;
 

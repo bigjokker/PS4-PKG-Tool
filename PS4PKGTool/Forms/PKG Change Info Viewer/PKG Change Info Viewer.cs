@@ -1,12 +1,5 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.Collections.Generic;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
@@ -16,7 +9,6 @@ namespace PS4PKGTool
     public partial class PKGChangeInfoViewer : DarkUI.Forms.DarkForm
     {
         static string xmlContent;
-        List<string> app_ver = new List<string>();
         public PKGChangeInfoViewer(string txt)
         {
             InitializeComponent();
@@ -40,9 +32,7 @@ namespace PS4PKGTool
             {
                 var cdata = node.FirstChild.InnerText;
 
-                //ShowInformation(cdata);
                 dt.Rows.Add(node.Attributes["app_ver"].Value, cdata);
-                //darkTextBox1.Text += nodes.InnerText.Replace("![CDATA[", "").Replace("]]", "");
             }
 
             darkDataGridView1.DataSource = dt;
@@ -58,17 +48,6 @@ namespace PS4PKGTool
             {
                 col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
-
-            //    for (int i = 0; i < nodes.Count; i++)
-            //{
-            //    darkTextBox1.Text += nodes[i].Attributes["app_ver"].Value;
-            //    darkTextBox1.Text += nodes[i].InnerText;
-
-            //    dt.Rows.Add(nodes[i].Attributes["app_ver"].Value, nodes[i].InnerText);
-            //}
-            //darkDataGridView1.DataSource = dt;
-            //darkDataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            //darkDataGridView1.Columns[1].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using PS4PKGTool.Util;
-using PS4PKGTool.Utilities.PS4PKGToolHelper;
+﻿using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using PS4PKGTool.Utilities.Settings;
 using System;
 using System.Collections.Generic;
@@ -9,9 +8,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using static PS4PKGTool.Utilities.PS4PKGToolHelper.Helper;
-//using Microsoft.AppCenter;
-//using Microsoft.AppCenter.Analytics;
-//using Microsoft.AppCenter.Crashes;
 
 namespace PS4PKGTool
 {

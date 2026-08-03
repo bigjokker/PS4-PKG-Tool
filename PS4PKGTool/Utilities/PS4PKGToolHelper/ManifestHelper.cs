@@ -139,7 +139,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         }
 
         /// <summary>
-        /// Reconstructs the 15-column DataTable from manifest entries.
+        /// Reconstructs the 16-column DataTable from manifest entries.
         /// </summary>
         public static DataTable BuildDataTableFromManifest(List<ManifestEntry> entries)
         {
@@ -194,7 +194,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         }
 
         /// <summary>
-        /// Reconstructs VerifiedPs4PkgList from manifest entries.
+        /// Reconstructs the list of PKG paths from manifest entries.
         /// </summary>
         public static List<string> BuildPkgPathList(List<ManifestEntry> entries)
         {

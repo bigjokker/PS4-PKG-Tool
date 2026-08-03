@@ -8,7 +8,6 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
-using System.Text;
 using System.Threading.Tasks;
 using TRPViewer;
 using System.Drawing.Drawing2D;
@@ -25,17 +24,12 @@ using Microsoft.VisualBasic.CompilerServices;
 using PS4PKGTool.Util;
 using System.Reflection;
 using System.Net.Http;
-using DarkUI.Forms;
 using DarkUI.Controls;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 {
     public class Helper
     {
-        public static bool FirstLaunch { get; set; } = true;
-        
         public static bool FinalizePkgProcess = true;
 
         public static bool LoadFromManifest { get; set; } = false;
@@ -92,11 +86,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             return Conversions.ToString(num);
         }
 
-        public static void ExtractResources()
-        {
-           
-        }
-
         public static  class Backport
         {
             public class BackportInfo
@@ -106,18 +95,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             }
 
             public static string BackportInfoFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\backport.json";
-            public static string CheckPKGBackported(string pkgFile)
-            {
-                try
-                {
-                    if (!File.Exists(BackportInfoFile)) return null;
-                    string json = File.ReadAllText(BackportInfoFile);
-                    var list = JsonConvert.DeserializeObject<List<BackportInfo>>(json);
-                    var match = list?.FirstOrDefault(f => f.FilePath.Equals(pkgFile, StringComparison.OrdinalIgnoreCase));
-                    return match?.Backported;
-                }
-                catch (Exception ex) { Logger.LogWarning("Error reading backport info: " + ex.Message); return null; }
-            }
 
             public static Dictionary<string, string> LoadCache()
             {
@@ -141,7 +118,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 foreach (DataGridViewRow row in dataGridView.Rows)
                 {
                     string filePath = row.Cells[13].Value.ToString() + @"\" + row.Cells[0].Value.ToString();
-                    string backported = (row.Cells[14].Value?.ToString() == "No") ? "No": row.Cells[14].Value?.ToString();
+                    string backported = row.Cells[14].Value?.ToString() ?? "No";
 
                     updatedPkgFileList.Add(new BackportInfo
                     {
@@ -213,74 +190,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 return Image.FromStream(new MemoryStream(ImageBytes));
             }
 
-            public static byte[] ImageToBytes(Image Image)
-            {
-                MemoryStream memoryStream = new MemoryStream();
-                Image.Save(memoryStream, Image.RawFormat);
-                return memoryStream.GetBuffer();
-            }
-
-            public static Image GetImage(byte[] fbytes)
-            {
-                return BytesToImage(fbytes);
-            }
-
-            public static bool IsAdmin()
-            {
-                bool flag = false;
-                AppDomain.CurrentDomain.SetPrincipalPolicy(PrincipalPolicy.WindowsPrincipal);
-                if (((WindowsPrincipal)Thread.CurrentPrincipal).IsInRole(WindowsBuiltInRole.Administrator))
-                    flag = true;
-                return flag;
-            }
-        }
-
-        public class Passcode
-        {
-            private static string passcode_;
-            public static string passcode
-            {
-                get { return passcode_; }
-                set { passcode_ = value; }
-            }
-        }
-
-        public class Update
-        {
-            public static WebClient client;
-
-            private static int Part_;
-            public static int Part
-            {
-                get { return Part_; }
-                set { Part_ = value; }
-            }
-
-            private static string URL_;
-            public static string URL
-            {
-                get { return URL_; }
-                set { URL_ = value; }
-            }
-            private static string PART_;
-            public static string PART
-            {
-                get { return PART_; }
-                set { PART_ = value; }
-            }
-            private static string SIZE_;
-            public static string SIZE
-            {
-                get { return SIZE_; }
-                set { SIZE_ = value; }
-            }
-
-            private static string Downloading_ = "no";
-            public static string Downloading
-            {
-                get { return Downloading_; }
-                set { Downloading_ = value; }
-            }
         }
 
         public class Entry
@@ -339,20 +248,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             static RSAParameters param = new RSAParameters()
             {
 
-                /*
-                        public struct RSAParameters
-                        {
-                            public byte[] D;
-                            public byte[] DP;
-                            public byte[] DQ;
-                            public byte[] Exponent;
-                            public byte[] InverseQ;
-                            public byte[] Modulus;
-                            public byte[] P;
-                            public byte[] Q;
-                        }
-                */
-
                 D = new byte[256] {
                 0x32, 0xd9, 0x03, 0x90, 0x8f, 0xbd, 0xb0, 0x8f, 0x57, 0x2b, 0x28, 0x5e,
                 0x0b, 0x8d, 0xb3, 0xea, 0x5c, 0xd1, 0x7e, 0xa8, 0x90, 0x88, 0x8c, 0xdd,
@@ -407,7 +302,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             },
 
                 Exponent = new byte[04] {
-              0x00, 0x01, 0x00, 0x01 /*, 0x5A, 0x65, 0x72, 0x30, 0x78, 0x46, 0x46, 0x5F, 0x6C, 0x69, 0x6B, 0x65, 0x5F, 0x64, 0x69, 0x6B */
+              0x00, 0x01, 0x00, 0x01
             },
 
                 InverseQ = new byte[128] {
@@ -459,7 +354,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 0x68, 0xB3, 0xFE, 0x6C, 0xCB, 0x8D, 0x82, 0x20, 0x76, 0x23, 0x63, 0xB7, 0xE9, 0x68, 0x10, 0x01,
                 0x4E, 0xDC, 0xBA, 0x27, 0x5D, 0x01, 0xC1, 0x2D, 0x80, 0x5E, 0x2B, 0xAF, 0x82, 0x6B, 0xD8, 0x84,
                 0xB6, 0x10, 0x52, 0x86, 0xA7, 0x89, 0x8E, 0xAE, 0x9A, 0xE2, 0x89, 0xC6, 0xF7, 0xD5, 0x87, 0xFB,
-/*              0x5A, 0x65, 0x72, 0x30, 0x78, 0x46, 0x46, 0x5F, 0x6C, 0x69, 0x6B, 0x65, 0x5F, 0x64, 0x69, 0x6B */
             },
 
                 Q = new byte[128] {
@@ -471,7 +365,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 0x0D, 0xFF, 0xF5, 0x07, 0xCA, 0xB4, 0xC8, 0x9B, 0x96, 0x3C, 0x07, 0x9E, 0x3E, 0x6B, 0x2A, 0x11,
                 0xF2, 0x8A, 0xB1, 0x8A, 0xD7, 0x2E, 0x1B, 0xA5, 0x53, 0x24, 0x06, 0xED, 0x50, 0xB8, 0x90, 0x67,
                 0xB1, 0xE2, 0x41, 0xC6, 0x92, 0x01, 0xEE, 0x10, 0xF0, 0x61, 0xBB, 0xFB, 0xB2, 0x7D, 0x4A, 0x73,
-/*              0x5A, 0x65, 0x72, 0x30, 0x78, 0x46, 0x46, 0x5F, 0x6C, 0x69, 0x6B, 0x65, 0x5F, 0x64, 0x69, 0x6B */
             }
             };
 
@@ -498,18 +391,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 public string Path { get; set; }
             }
 
-            public TreeView(System.Windows.Forms.ListView listView, ImageList imageList)
-            {
-                _listView=listView;
-                _imageList=imageList;
-            }
-
             public static TreeNode currentNode;
             public static List<TreeNode> rootNodes; // Keep track of the root nodes (Image0 and Sc0)
 
             private static string Nodename_;
-            private readonly System.Windows.Forms.ListView _listView;
-            private readonly ImageList _imageList;
 
             public static string Nodename
             {
@@ -522,98 +407,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     Nodename_ = value;
                 }
             }
-
-            private void HandleParentDirectoryNavigation()
-            {
-                if (currentNode.Parent != null)
-                {
-                    currentNode = currentNode.Parent;
-                }
-                else if (currentNode != null && !rootNodes.Contains(currentNode))
-                {
-                    currentNode = null;
-                }
-                else
-                {
-                    currentNode = null;
-                }
-
-                UpdateNodeFullPathAndListView();
-            }
-
-            private void HandleDirectorySelection(TreeNode selectedNode)
-            {
-                currentNode = selectedNode;
-                UpdateNodeFullPathAndListView();
-            }
-
-            private void UpdateNodeFullPathAndListView(bool isRoot = false)
-            {
-                PKG.NodeFullPath = isRoot ? "" : currentNode.FullPath;
-                PopulateListView(isRoot);
-            }
-
-            private ListViewItem PopulateListView(bool showRootNodes = false)
-            {
-                _listView.Items.Clear();
-                ListViewItem listViewItem = null;
-                // Add the "..." row to navigate to the parent directory
-                if (currentNode != null && !showRootNodes)
-                {
-                    TreeNodeInfo parentItem = new TreeNodeInfo
-                    {
-                        Node = currentNode.Parent != null ? currentNode.Parent : null,
-                        Path = "..."
-                    };
-                    ListViewItem parentListViewItem = new ListViewItem("...");
-                    parentListViewItem.Tag = parentItem;
-                    parentListViewItem.ImageIndex = 2; // Set the appropriate image index for the "parent folder" icon
-                    _listView.Items.Add(parentListViewItem);
-                }
-
-                _listView.SmallImageList = _imageList;
-
-                List<TreeNode> list;
-                if (currentNode != null)
-                {
-                    list = currentNode.Nodes.Cast<TreeNode>().ToList();
-                }
-                else if (showRootNodes)
-                {
-                    list = rootNodes;
-                }
-                else
-                {
-                    return null; // If currentNode is null and showRootNodes is false, do not populate the ListView.
-                }
-
-                foreach (var item in list)
-                {
-                    string fileName = Path.GetFileNameWithoutExtension(item.Text);
-                    string dir = Path.GetDirectoryName(item.FullPath);
-                    bool isDirectory = item.Nodes.Count > 0;
-
-                    TreeNodeInfo treeNodeInfo = new TreeNodeInfo
-                    {
-                        Node = item,
-                        Path = item.FullPath
-                    };
-
-                    listViewItem = new ListViewItem(isDirectory ? "Directory" : "File");
-                    listViewItem.Text = item.Text;
-                    listViewItem.SubItems.Add(isDirectory ? "Directory" : Path.GetExtension(item.Text).Replace(".", ""));
-                    listViewItem.SubItems.Add(dir);
-                    listViewItem.Tag = treeNodeInfo;
-                    listViewItem.ImageIndex = isDirectory ? 0 : 1;
-                }
-                return listViewItem;
-            }
         }
 
         public class PKG
         {
-            public static BackgroundWorker ExtractPKGBackgroundWorker;
-
             public static bool isDeletingPkg { get; set; }
             private static string Passcode_;
             public static string Passcode
@@ -640,8 +437,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     NodeFullPath_ = value;
                 }
             }
-
-            public static bool CancelExtract { get; set; }
 
             private static int CountFailRename_;
             private static string ListFailRename_;
@@ -693,16 +488,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 }
             }
 
-            public static bool IsPkgGamePatchAppUnknown(Unprotected_PKG ps4pkg)
-            {
-                if (ps4pkg.PKG_Type.ToString() != "Addon")
-                {
-                    return true;
-                }
-
-                return false;
-            }
-
             private static string CurrentPKGTitle_;
             public static string CurrentPKGTitle
             {
@@ -743,8 +528,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             private static List<string> validPS4PKG_ = new List<string>();
             private static List<string> idEntryList_ = new List<string>();
             private static List<string> nameEntryList_ = new List<string>();
-            private static List<string> scannedPKG_ = new List<string>();
-            private static List<string> extracted_item_ = new List<string>();
             private static int fake_;
             private static int patch_;
             private static int game_;
@@ -754,13 +537,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             private static int Official_;
             private static int Addon_Unlocker_;
             private static int count_;
-            //private static int Total_;
-
-            //public static int totalPkg
-            //{
-            //    get { return Total_; }
-            //    set { Total_ = value; }
-            //}
 
             public static int unknown
             {
@@ -831,13 +607,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 get { return nameEntryList_; }
                 set { nameEntryList_ = value; }
             }
-            public static List<string> ExtractedItemList
-            {
-                get { return extracted_item_; }
-                set { extracted_item_ = value; }
-            }
-
-
             private static byte[] PKGHeader_ = new byte[16]
             {
             0x7F, 0x43, 0x4E, 0x54, 0x83, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F,
@@ -935,16 +704,8 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         {
             public static System.Media.SoundPlayer At9Player = new System.Media.SoundPlayer();
 
-            private static string passcode;
             private static bool extractAT9Done_ = false;
             private static bool isBGMPlaying_ = false;
-            private static List<string> allAT9_ = new List<string>();
-
-            public static List<string> allAT9
-            {
-                get { return allAT9_; }
-                set { allAT9_ = value; }
-            }
 
             public static bool extractAt9Done
             {
@@ -995,44 +756,18 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                             foreach (var metaWithIndex in metasWithIndices)
                             {
                                 LibOrbisPkg.PKG.MetaEntry meta = metaWithIndex.Meta;
-                                var index = metaWithIndex.Index;
                                 var name = meta.id;
 
                                 if (name.ToString().ToUpper().EndsWith("_AT9"))
                                 {
                                     var outputPath = Path.Combine(bgmPath, name.ToString().Replace("_AT9", ".AT9").Replace("SND0", finalTitle).SanitizeFileName());
-                                    allAT9.Add(outputPath);
 
                                     using (var pkgFileStream = File.OpenRead(pkgFile))
                                     using (var outputFileStream = File.Create(outputPath))
                                     {
-                                        if (index < 0 || index >= pkgData.Metas.Metas.Count)
-                                        {
-                                            // DarkShowInformationInformation("Error: entry number out of range");
-                                        }
-                                        else
-                                        {
-                                            var entry = new SubStream(pkgFileStream, meta.DataOffset, meta.DataSize);
-                                            outputFileStream.SetLength(meta.DataSize);
-
-                                            if (meta.Encrypted)
-                                            {
-                                                if (passcode == null)
-                                                {
-                                                    // DarkShowInformationInformation("Warning: Entry is encrypted but no passcode was provided! Saving encrypted bytes.");
-                                                }
-                                                else
-                                                {
-                                                    var entryBytes = new byte[entry.Length];
-                                                    entry.Read(entryBytes, 0, entryBytes.Length);
-                                                    entryBytes = LibOrbisPkg.PKG.Entry.Decrypt(entryBytes, pkgData.Header.content_id, passcode, meta);
-                                                    outputFileStream.Write(entryBytes, 0, (int)meta.DataSize);
-                                                    break;
-                                                }
-                                            }
-
-                                            entry.CopyTo(outputFileStream);
-                                        }
+                                        var entry = new SubStream(pkgFileStream, meta.DataOffset, meta.DataSize);
+                                        outputFileStream.SetLength(meta.DataSize);
+                                        entry.CopyTo(outputFileStream);
                                     }
                                 }
                             }
@@ -1163,7 +898,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     Arguments = $"/c start {url}",
                     CreateNoWindow = true,
                     UseShellExecute = false
-                }); return;
+                });
             }
             public static bool IsAppInstalled(string softwareName)
             {
@@ -1250,14 +985,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                     {
                         return true;
                     }
-                    else if (reply.Status == IPStatus.TimedOut)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return false;
-                    }
+                    return false;
                 }
                 catch (Exception)
                 {
@@ -1870,18 +1598,10 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public class Trophy
         {
             public static TRPReader trophy;
-            private static List<string> idEntryList_ = new List<string>();
-            private static List<string> nameEntryList_ = new List<string>();
             private static List<Image> imageToExtract_ = new List<Image>();
             private static List<string> NameToExtract_ = new List<string>();
             public static string TrophyTempFolder = AppDataDirectory + @"TrophyFile\";
 
-            private static string outPath_;
-            public static string outPath
-            {
-                get { return outPath_; }
-                set { outPath_ = value; }
-            }
             public static List<Image> ImageToExtractList
             {
                 get { return imageToExtract_; }
@@ -1892,18 +1612,6 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             {
                 get { return NameToExtract_; }
                 set { NameToExtract_ = value; }
-            }
-
-            public static List<string> idEntryList
-            {
-                get { return idEntryList_; }
-                set { idEntryList_ = value; }
-            }
-
-            public static List<string> nameEntryList
-            {
-                get { return nameEntryList_; }
-                set { nameEntryList_ = value; }
             }
 
             public static System.Drawing.Bitmap ResizeImage(Image image, int width, int height)

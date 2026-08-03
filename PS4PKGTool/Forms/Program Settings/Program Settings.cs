@@ -1,29 +1,18 @@
 ﻿using Microsoft.Win32;
-using PS4PKGTool.Util.Constants;
-using PS4PKGTool.Util;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using PS4PKGTool.Utilities.Settings;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Color = System.Drawing.Color;
 using static PS4PKGTool.Utilities.PS4PKGToolHelper.Helper;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 using System.Globalization;
-using DocumentFormat.OpenXml.Office.CoverPageProps;
-using System.Text.RegularExpressions;
 using System.Threading;
 using PS4PKGTool.Utilities.TrophyMetadata;
 
@@ -379,16 +368,8 @@ namespace PS4PKGTool
             notifyIcon.BalloonTipText = text;
             notifyIcon.ShowBalloonTip(3000); // Display the balloon tip for 3 seconds
 
-            // Handle click event if needed
-            notifyIcon.BalloonTipClicked += NotifyIcon_BalloonTipClicked;
-
             // Clean up when done
             notifyIcon.Dispose();
-        }
-
-        private static void NotifyIcon_BalloonTipClicked(object sender, EventArgs e)
-        {
-            // Handle the balloon tip click event
         }
 
         private void cbPs5BcCheck_CheckedChanged(object sender, EventArgs e)

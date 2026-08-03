@@ -19,7 +19,6 @@ namespace PS4PKGTool.Utilities.Settings
             {
                 using (StreamWriter writer = new StreamWriter(filePath))
                 {
-                    writer.WriteLine($"saved_fbd_last_directory={settings.SavedFbdLastDirectory}");
                     string directories = string.Join(",", settings.PkgDirectories);
                     writer.WriteLine($"pkg_directories={directories}");
                     writer.WriteLine($"scan_recursive={settings.ScanRecursive}");
@@ -75,10 +74,6 @@ namespace PS4PKGTool.Utilities.Settings
                         string line;
                         while ((line = reader.ReadLine()) != null)
                         {
-                            if (line.StartsWith("saved_fbd_last_directory="))
-                            {
-                                appSettings_.SavedFbdLastDirectory = line.Substring("saved_fbd_last_directory=".Length);
-                            }
                             if (line.StartsWith("pkg_directories="))
                             {
                                 string directories = line.Substring("pkg_directories=".Length);

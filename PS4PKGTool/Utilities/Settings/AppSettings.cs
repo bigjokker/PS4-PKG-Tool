@@ -1,15 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PS4PKGTool.Utilities.Settings
 {
     public class AppSettings
     {
-        public string SavedFbdLastDirectory { get; set; }
         public List<string> PkgDirectories { get; set; }
         public bool ScanRecursive { get; set; }
         public bool PlayBgm { get; set; }
@@ -35,7 +31,6 @@ namespace PS4PKGTool.Utilities.Settings
 
         #region columnVisibility
 
-        public bool pkgTitleColumn { get; set; } = true;
         public bool pkgtitleIdColumn { get; set; }
         public bool pkgcontentIdColumn { get; set; }
         public bool pkgregionColumn { get; set; }
