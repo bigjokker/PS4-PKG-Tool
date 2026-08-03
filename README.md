@@ -9,6 +9,12 @@ Suggestions are welcome. Report any bugs [here](https://github.com/pearlxcore/PS
 
 **This is not software for obtaining free PS4 games.**
 
+# Support My Work
+
+[![ko-fi](https://github.com/user-attachments/assets/be9cc4be-3352-4bd5-8086-05c30930f81d)](https://ko-fi.com/R6R524N7X)
+
+[![paypal](https://user-images.githubusercontent.com/36906814/102657760-39d1ce00-41b1-11eb-96fe-c10e2d9b3f39.png)](https://www.paypal.com/paypalme/pearlxcoree)
+
 # Requirement
 
 - [.NET 10](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
@@ -62,12 +68,6 @@ This is only compatible with PS4 firmware that can run Flatz's Remote Package In
 # Download
 
 https://github.com/pearlxcore/PS4-PKG-Tool/releases
-
-# Support My Work
-
-[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R524N7X)
-
-[![paypal](https://user-images.githubusercontent.com/36906814/102657760-39d1ce00-41b1-11eb-96fe-c10e2d9b3f39.png)](https://www.paypal.com/paypalme/pearlxcoree)
 
 # License
 
