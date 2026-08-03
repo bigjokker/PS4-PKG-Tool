@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using PS4PKGTool.Utilities.PS4PKGToolHelper;
 
@@ -11,24 +13,26 @@ namespace PS4PKGTool
         public bool AddToDirectories { get; private set; } = false;
         public bool Confirmed { get; private set; } = false;
 
-        public DropFolderPrompt(string folderPath, bool alreadySaved)
+        public List<string> FolderPaths { get; } = new List<string>();
+
+        public DropFolderPrompt(List<string> folderPaths)
         {
             InitializeComponent();
             this.Icon = Helper.AppIcon;
+            FolderPaths = folderPaths;
 
-            // Show folder name + parent for context
-            string displayPath = folderPath;
-            if (displayPath.Length > 70)
-                displayPath = "..." + displayPath.Substring(displayPath.Length - 67);
+            darkLabelTitle.Text = folderPaths.Count == 1 ? "Folder Dropped" : $"{folderPaths.Count} Folders Dropped";
 
-            darkLabelPath.Text = displayPath;
-            darkLabelPath2.Text = Path.GetDirectoryName(folderPath);
+            string first = folderPaths[0];
+            if (first.Length > 70)
+                first = "..." + first.Substring(first.Length - 67);
+            darkLabelPath.Text = first;
+            darkLabelPath2.Text = folderPaths.Count == 1
+                ? Path.GetDirectoryName(first)
+                : $"+ {folderPaths.Count - 1} more folder{(folderPaths.Count == 2 ? "" : "s")}";
 
             chkRecursive.Checked = true;
-            chkAddToDirectories.Checked = !alreadySaved;
-            chkAddToDirectories.Enabled = !alreadySaved;
-            if (alreadySaved)
-                chkAddToDirectories.Text = "Add to saved directories (already added)";
+            chkAddToDirectories.Checked = true;
         }
 
         private void btnScan_Click(object sender, EventArgs e)

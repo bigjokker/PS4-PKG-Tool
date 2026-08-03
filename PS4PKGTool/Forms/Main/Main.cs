@@ -1965,6 +1965,8 @@ namespace PS4PKGTool
             try { files = (string[])e.Data.GetData(DataFormats.FileDrop); } catch (Exception ex) { Logger.LogWarning("Drag-drop data retrieval failed: " + ex.Message); }
             if (files == null || files.Length == 0) return;
 
+            // Collect valid folder paths first.
+            var folders = new List<string>();
             foreach (string path in files)
             {
                 string folderPath = path;
@@ -1975,27 +1977,40 @@ namespace PS4PKGTool
                 }
                 else if (!Directory.Exists(folderPath))
                     continue;
+                if (!folders.Contains(folderPath, StringComparer.OrdinalIgnoreCase))
+                    folders.Add(folderPath);
+            }
 
-                bool alreadySaved = appSettings_.PkgDirectories.Any(d =>
-                    string.Equals(d, folderPath, StringComparison.OrdinalIgnoreCase));
+            if (folders.Count == 0) return;
 
-                using (var prompt = new DropFolderPrompt(folderPath, alreadySaved))
+            // One dialog for all folders — recursive + add-to-directories options.
+            using (var prompt = new DropFolderPrompt(folders))
+            {
+                prompt.ShowDialog();
+                if (!prompt.Confirmed) return;
+
+                if (prompt.AddToDirectories)
                 {
-                    prompt.ShowDialog();
-                    if (!prompt.Confirmed) continue;
-
-                    if (prompt.AddToDirectories && !alreadySaved)
+                    foreach (var f in prompt.FolderPaths)
                     {
-                        appSettings_.PkgDirectories.Add(folderPath);
-                        SettingsManager.SaveSettings(appSettings_, SettingFilePath);
+                        if (!appSettings_.PkgDirectories.Any(d =>
+                            string.Equals(d, f, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            appSettings_.PkgDirectories.Add(f);
+                        }
                     }
-
-                    ScanDroppedFolder(folderPath, prompt.ScanRecursively);
+                    SettingsManager.SaveSettings(appSettings_, SettingFilePath);
                 }
+
+                // Scan sequentially (shared DataTable, no race).
+                var pending = new Queue<string>(prompt.FolderPaths);
+                var first = pending.Dequeue();
+                ScanDroppedFolder(first, prompt.ScanRecursively, pending);
             }
         }
 
-        private void ScanDroppedFolder(string folderPath, bool recursive)
+        private void ScanDroppedFolder(string folderPath, bool recursive,
+            Queue<string> pending = null)
         {
             this.Invoke((MethodInvoker)delegate
             {
@@ -2240,6 +2255,10 @@ namespace PS4PKGTool
                     toolStripStatusLabel2.Text = "... ";
                     toolStripProgressBar1.Value = 0;
                 });
+
+                // Chain to the next dropped folder (if any)
+                if (pending != null && pending.Count > 0)
+                    ScanDroppedFolder(pending.Dequeue(), recursive, pending);
             };
             bw.RunWorkerAsync();
         }
@@ -4711,11 +4730,9 @@ namespace PS4PKGTool
                 List<string> dirList = new List<string>();
 
                 origPath = PKG.SelectedPKGFilename;
-                // Copy to a short ASCII temp dir so orbis-pub-cmd (non-Unicode)
-                // can read PKGs whose directory path contains full-width or
-                // special characters (e.g. "11-11： Memories Retold").
-                tempPath = Path.Combine(CreateOrbisTempDir("v"), "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                File.Copy(origPath, tempPath);
+                string dir = Path.GetPathRoot(origPath);
+                tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
+                File.Move(origPath, tempPath);
                 renamed = true;
                 string safePkgPath = tempPath;
 
@@ -4837,20 +4854,19 @@ namespace PS4PKGTool
                 }
                 finally
                 {
-                    if (renamed && File.Exists(tempPath))
+                    if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
                     {
-                        try { File.Delete(tempPath); } catch { }
-                        try { Directory.Delete(Path.GetDirectoryName(tempPath), true); } catch { }
+                        try { File.Move(tempPath, origPath); } catch { }
                     }
                 }
             };
             bg.RunWorkerCompleted += delegate (object sender, RunWorkerCompletedEventArgs e)
             {
-                // Clean up the temp copy (original PKG was never touched)
-                if (renamed && File.Exists(tempPath))
+                // Restore original filename
+                if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
                 {
-                    try { File.Delete(tempPath); } catch { }
-                    try { Directory.Delete(Path.GetDirectoryName(tempPath), true); } catch { }
+                    try { File.Move(tempPath, origPath); }
+                    catch (Exception ex) { Logger.LogError("Failed to restore PKG filename. Recover from " + tempPath + ": " + ex.Message); }
                 }
 
                 if (e.Error != null)
@@ -5040,7 +5056,7 @@ namespace PS4PKGTool
                         Directory.CreateDirectory(tempOutputDir);
 
                         // Temp rename for Unicode-safe orbis-pub-cmd path (input)
-                        string dir = Path.GetDirectoryName(origPath);
+                        string dir = Path.GetPathRoot(origPath);
                         string tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                         bool renamed = false;
                         File.Move(origPath, tempPath);
@@ -5253,7 +5269,7 @@ namespace PS4PKGTool
                     toolStripStatusLabel2.Text = $"Extracting {targ_path} ({in_path})..";
 
                     // Temp rename PKG for Unicode-safe orbis-pub-cmd path
-                    string renameDir = Path.GetDirectoryName(in_path);
+                    string renameDir = Path.GetPathRoot(in_path);
                     string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                     bool wasRenamed = false;
                     File.Move(in_path, renameTmp);
@@ -5399,7 +5415,7 @@ namespace PS4PKGTool
         private void ExtractFilesSync(List<string> nodeList, string extractLocation, bool preserveStructure)
         {
             string inPath = PKG.SelectedPKGFilename;
-            string renameDir = Path.GetDirectoryName(inPath);
+            string renameDir = Path.GetPathRoot(inPath);
             string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
             bool wasRenamed = false;
             File.Move(inPath, renameTmp);
@@ -5690,7 +5706,7 @@ namespace PS4PKGTool
         private void ViewUpdateChangelog()
         {
             string origPath = PKG.SelectedPKGFilename;
-            string renameDir = Path.GetDirectoryName(origPath);
+            string renameDir = Path.GetPathRoot(origPath);
             string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
             bool renamed = false;
             string safePath = renameTmp;
