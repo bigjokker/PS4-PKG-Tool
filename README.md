@@ -57,7 +57,7 @@ This is only compatible with PS4 firmware that can run Flatz's Remote Package In
 
 ![Image 2](https://github.com/user-attachments/assets/1ebf5e56-50de-4457-90ff-4e4f9c49f623)
 
-![Image 3](https://github.com/user-attachments/assets/7a5d8968-2fe4-4f04-9bf0-0fe2c3407318)
+![Image 3](https://github.com/user-attachments/assets/bf14767a-e341-4c98-9308-78b4cf2529ee)
 
 ![Image 4](https://github.com/user-attachments/assets/767a1b8c-c3f6-42d8-8314-04fcfb298918)
 
