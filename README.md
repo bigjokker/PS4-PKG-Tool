@@ -47,10 +47,17 @@ This is only compatible with PS4 firmware that can run Flatz's Remote Package In
 
 # Screenshot
 
-![4](https://github.com/pearlxcore/PS4-PKG-Tool/assets/36906814/85e05c65-4ece-4e56-9674-61144dea1855)
-![1](https://github.com/pearlxcore/PS4-PKG-Tool/assets/36906814/9652aa4d-771e-417f-861e-7ae7072231ae)
-![2](https://github.com/pearlxcore/PS4-PKG-Tool/assets/36906814/5cf50de3-122e-4e98-8f2f-fa94ee270586)
-![3](https://github.com/pearlxcore/PS4-PKG-Tool/assets/36906814/049ce657-649a-4fd1-9c8a-e1ec923569dd)
+![Image 1](https://github.com/user-attachments/assets/e0d71e99-b892-4762-a656-e16ae62cf70d)
+
+![Image 2](https://github.com/user-attachments/assets/1ebf5e56-50de-4457-90ff-4e4f9c49f623)
+
+![Image 3](https://github.com/user-attachments/assets/7a5d8968-2fe4-4f04-9bf0-0fe2c3407318)
+
+![Image 4](https://github.com/user-attachments/assets/767a1b8c-c3f6-42d8-8314-04fcfb298918)
+
+![Image 5](https://github.com/user-attachments/assets/0524111a-6140-4d74-b467-170e8772703b)
+
+![Image 6](https://github.com/user-attachments/assets/130edeef-47ee-4346-892f-7113bc0a8de6)
 
 # Download
 
