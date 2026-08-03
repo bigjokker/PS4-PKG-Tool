@@ -174,7 +174,7 @@ namespace PS4PKGTool
             // Load treeview file-type icons
             try
             {
-                string iconDir = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), @"..\..\..\..\TreeView Icon");
+                string iconDir = Path.Combine(AppContext.BaseDirectory, "TreeView Icon");
                 if (Directory.Exists(iconDir))
                 {
                     string[] ordered = { "folder", "document", "image", "config", "binary",
