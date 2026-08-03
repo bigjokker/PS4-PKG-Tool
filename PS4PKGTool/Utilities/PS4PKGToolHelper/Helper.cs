@@ -53,7 +53,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             }
         }
 
-        public static string AppDataDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\";
+        public static string AppDataDirectory = AppContext.BaseDirectory + @"AppData\";
 
         /// <summary>
         /// Creates a short ASCII temp directory for orbis-pub-cmd working files.
@@ -67,9 +67,9 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
             Directory.CreateDirectory(dir);
             return dir;
         }
-        public static string OrbisPubCmd = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\orbis-pub-cmd.exe";
-        public static string Ps5BcJsonFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\ps5bc.json";
-        public static string PS4PKGToolLogFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\PS4PKGToolLog.txt";
+        public static string OrbisPubCmd = AppContext.BaseDirectory + @"AppData\orbis-pub-cmd.exe";
+        public static string Ps5BcJsonFile = AppContext.BaseDirectory + @"AppData\ps5bc.json";
+        public static string PS4PKGToolLogFile = AppContext.BaseDirectory + @"AppData\PS4PKGToolLog.txt";
 
         public static string RoundBytes(long num)
         {
@@ -94,7 +94,7 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 public string Backported { get; set; }
             }
 
-            public static string BackportInfoFile = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\AppData\backport.json";
+            public static string BackportInfoFile = AppContext.BaseDirectory + @"AppData\backport.json";
 
             public static Dictionary<string, string> LoadCache()
             {
