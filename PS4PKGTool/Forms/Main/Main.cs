@@ -4712,6 +4712,45 @@ namespace PS4PKGTool
             this.dgvHeader.ClearSelection();
         }
 
+        /// <summary>
+        /// Returns a writable directory on the same drive for the orbis temp rename.
+        /// If the PKG's own directory is already ASCII, it's used (in-place rename).
+        /// Otherwise walks up to the nearest ASCII-named ancestor and creates a
+        /// short temp dir there — the drive root is NOT used (not writable without
+        /// admin on C:).
+        /// </summary>
+        private static string GetOrbisTempDirFor(string pkgPath)
+        {
+            string dir = Path.GetDirectoryName(pkgPath);
+            if (!string.IsNullOrEmpty(dir) && dir.All(c => c < 128))
+                return dir;
+
+            while (!string.IsNullOrEmpty(dir) && !dir.All(c => c < 128))
+                dir = Path.GetDirectoryName(dir);
+
+            if (string.IsNullOrEmpty(dir))
+                dir = Path.GetTempPath(); // fallback — rare, all-ancestors-Unicode
+
+            string temp = Path.Combine(dir, "p4t_v_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+            Directory.CreateDirectory(temp);
+            return temp;
+        }
+
+        /// <summary>
+        /// Deletes the temp dir created by GetOrbisTempDirFor (only the "p4t_v_" ones).
+        /// No-op when the file was renamed in place (its parent is a real directory).
+        /// </summary>
+        private static void DeleteOrbisTempDir(string tempFilePath)
+        {
+            try
+            {
+                string d = Path.GetDirectoryName(tempFilePath);
+                if (!string.IsNullOrEmpty(d) && Path.GetFileName(d).StartsWith("p4t_v_"))
+                    Directory.Delete(d, true);
+            }
+            catch { }
+        }
+
         private void PopulatePKGDataToTreeView()
         {
             string orbisPubCmdErrorMessage = "";
@@ -4730,7 +4769,7 @@ namespace PS4PKGTool
                 List<string> dirList = new List<string>();
 
                 origPath = PKG.SelectedPKGFilename;
-                string dir = Path.GetPathRoot(origPath);
+                string dir = GetOrbisTempDirFor(origPath);
                 tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                 File.Move(origPath, tempPath);
                 renamed = true;
@@ -4858,6 +4897,7 @@ namespace PS4PKGTool
                     {
                         try { File.Move(tempPath, origPath); } catch { }
                     }
+                    DeleteOrbisTempDir(tempPath);
                 }
             };
             bg.RunWorkerCompleted += delegate (object sender, RunWorkerCompletedEventArgs e)
@@ -4868,6 +4908,7 @@ namespace PS4PKGTool
                     try { File.Move(tempPath, origPath); }
                     catch (Exception ex) { Logger.LogError("Failed to restore PKG filename. Recover from " + tempPath + ": " + ex.Message); }
                 }
+                DeleteOrbisTempDir(tempPath);
 
                 if (e.Error != null)
                 {
@@ -5056,7 +5097,7 @@ namespace PS4PKGTool
                         Directory.CreateDirectory(tempOutputDir);
 
                         // Temp rename for Unicode-safe orbis-pub-cmd path (input)
-                        string dir = Path.GetPathRoot(origPath);
+                        string dir = GetOrbisTempDirFor(origPath);
                         string tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                         bool renamed = false;
                         File.Move(origPath, tempPath);
@@ -5141,6 +5182,7 @@ namespace PS4PKGTool
                                     Logger.LogError("Failed to restore PKG filename. Recover the PKG from " + tempPath + ": " + ex.Message);
                                 }
                             }
+                            DeleteOrbisTempDir(tempPath);
                         }
                     };
                     _extractWorker.RunWorkerCompleted += (sender, e) =>
@@ -5269,7 +5311,7 @@ namespace PS4PKGTool
                     toolStripStatusLabel2.Text = $"Extracting {targ_path} ({in_path})..";
 
                     // Temp rename PKG for Unicode-safe orbis-pub-cmd path
-                    string renameDir = Path.GetPathRoot(in_path);
+                    string renameDir = GetOrbisTempDirFor(in_path);
                     string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                     bool wasRenamed = false;
                     File.Move(in_path, renameTmp);
@@ -5372,6 +5414,7 @@ namespace PS4PKGTool
                                 Logger.LogError($"Rename-back failed: {renameTmp} → {in_path}: {rex.Message}");
                             }
                         }
+                        DeleteOrbisTempDir(renameTmp);
                     }
 
                     // Clean up temp dir
@@ -5415,7 +5458,7 @@ namespace PS4PKGTool
         private void ExtractFilesSync(List<string> nodeList, string extractLocation, bool preserveStructure)
         {
             string inPath = PKG.SelectedPKGFilename;
-            string renameDir = Path.GetPathRoot(inPath);
+            string renameDir = GetOrbisTempDirFor(inPath);
             string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
             bool wasRenamed = false;
             File.Move(inPath, renameTmp);
@@ -5478,6 +5521,7 @@ namespace PS4PKGTool
                         Logger.LogError($"Rename-back failed: {renameTmp} → {inPath}: {rex.Message}");
                     }
                 }
+                DeleteOrbisTempDir(renameTmp);
             }
         }
 
@@ -5706,7 +5750,7 @@ namespace PS4PKGTool
         private void ViewUpdateChangelog()
         {
             string origPath = PKG.SelectedPKGFilename;
-            string renameDir = Path.GetPathRoot(origPath);
+            string renameDir = GetOrbisTempDirFor(origPath);
             string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
             bool renamed = false;
             string safePath = renameTmp;
@@ -5793,6 +5837,7 @@ namespace PS4PKGTool
                         Logger.LogError($"Rename-back failed: {renameTmp} → {origPath}: {rex.Message}");
                     }
                 }
+                DeleteOrbisTempDir(renameTmp);
                 try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
             }
         }
