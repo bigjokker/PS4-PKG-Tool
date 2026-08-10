@@ -2126,9 +2126,8 @@ namespace PS4PKGTool
                         {
                             if (t.Name == "SYSTEM_VER")
                             {
-                                int value = Convert.ToInt32(t.Value);
-                                if (value != 0)
-                                    pkgMinFirmware = $"{(value >> 8) & 0xFF}.{value & 0xFF:D2}";
+                                if (int.TryParse(t.Value, out int value) && value != 0)
+                                    pkgMinFirmware = FormatPkgSystemVersion(value);
                                 else pkgMinFirmware = t.Value;
                             }
                             if (t.Name == "VERSION") pkgVersion = verRegex2.Replace(t.Value, "");
@@ -2333,31 +2332,46 @@ namespace PS4PKGTool
                 var PkgDirectoryList = appSettings_.PkgDirectories;
                 foreach (var directory in PkgDirectoryList)
                 {
-                    var searchOption = appSettings_.ScanRecursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-
+                    // Non-recursive: only the configured folder itself (not children).
+                    // Recursive: whole tree, skipping excluded top-level folder names.
                     try
                     {
-                        var allDirectories = Directory.GetDirectories(directory, "*", SearchOption.TopDirectoryOnly);
-
-                        var directoriesToScan = new List<string> { directory };
-                        directoriesToScan.AddRange(allDirectories.Where(dir => !ExcludedDirectoryList.Contains(Path.GetFileName(dir))));
-
-                        foreach (var directory_ in directoriesToScan)
+                        if (!appSettings_.ScanRecursive)
                         {
                             this.Invoke((MethodInvoker)delegate
                             {
-                                toolStripStatusLabel2.Text = "Scanning directory.. " + "(" + directory_ + ") ";
+                                toolStripStatusLabel2.Text = "Scanning directory.. " + "(" + directory + ") ";
                             });
-
                             try
                             {
-                                var pkgFiles = Directory.EnumerateFiles(directory_, "*.PKG", searchOption);
-                                PkgFileList.AddRange(pkgFiles);
+                                PkgFileList.AddRange(Directory.EnumerateFiles(directory, "*.PKG", SearchOption.TopDirectoryOnly));
                             }
                             catch (UnauthorizedAccessException e)
                             {
                                 Logger.LogError(e.Message);
                             }
+                            continue;
+                        }
+
+                        this.Invoke((MethodInvoker)delegate
+                        {
+                            toolStripStatusLabel2.Text = "Scanning directory.. " + "(" + directory + ") ";
+                        });
+                        try
+                        {
+                            foreach (string pkgPath in Directory.EnumerateFiles(directory, "*.PKG", SearchOption.AllDirectories))
+                            {
+                                // Skip files under excluded directory names (any path segment)
+                                string[] parts = pkgPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                                if (parts.Any(p => ExcludedDirectoryList.Any(ex =>
+                                        string.Equals(ex, p, StringComparison.OrdinalIgnoreCase))))
+                                    continue;
+                                PkgFileList.Add(pkgPath);
+                            }
+                        }
+                        catch (UnauthorizedAccessException e)
+                        {
+                            Logger.LogError(e.Message);
                         }
                     }
                     catch (UnauthorizedAccessException e)
@@ -2473,9 +2487,8 @@ namespace PS4PKGTool
                     {
                         if (t.Name == "SYSTEM_VER")
                         {
-                            int value = Convert.ToInt32(t.Value);
-                            if (value != 0)
-                                pkgSystemVersion = $"{(value >> 8) & 0xFF}.{value & 0xFF:D2}";
+                            if (int.TryParse(t.Value, out int value) && value != 0)
+                                pkgSystemVersion = FormatPkgSystemVersion(value);
                             else pkgSystemVersion = t.Value;
                         }
                         if (t.Name == "VERSION")
@@ -5077,6 +5090,18 @@ namespace PS4PKGTool
                     listView1?.Refresh();
                     _extractWorker.DoWork += (sender, e) =>
                     {
+                        void SetStatus(string text)
+                        {
+                            try
+                            {
+                                this.BeginInvoke((Action)(() =>
+                                {
+                                    toolStripStatusLabel2.Text = text;
+                                }));
+                            }
+                            catch { }
+                        }
+
                         this.Invoke((Action)(() =>
                         {
                             toolStripProgressBar1.Visible = true;
@@ -5088,7 +5113,7 @@ namespace PS4PKGTool
                         string origPath = PKG.SelectedPKGFilename;
                         Logger.LogInformation($"Extracting: {Path.GetFileName(origPath)}");
                         Logger.LogInformation($"Extracting PKG ({origPath})..");
-                        toolStripStatusLabel2.Text = $"Extracting PKG ({origPath})..";
+                        SetStatus($"Extracting PKG ({Path.GetFileName(origPath)})…");
                         extractLocation = $@"{extractLocation}\{PS4_PKG.PS4_Title.SanitizeFileName()}";
                         Tool.CreateDirectoryIfNotExists(extractLocation);
 
@@ -5123,14 +5148,40 @@ namespace PS4PKGTool
                             using Process extract = new Process { StartInfo = extractStartInfo };
                             extract.Start();
                             Task<string> extractReadTask = extract.StandardOutput.ReadToEndAsync();
-                            if (!extract.WaitForExit(600000))
-                            {
-                                try { extract.Kill(); extract.WaitForExit(); } catch { }
-                            }
-                            string extractOutput = extractReadTask.Result;
 
-                            int exitCode = extract.ExitCode;
-                            // exit -1 = killed process (Stop button or timeout) — orbis returns 0 on
+                            // Poll instead of a hard 10-minute kill (issue #76 — large PKGs need longer;
+                            // the old 600000 ms timeout left partial extracts and a stuck "Stop Extract").
+                            int lastMbLogged = -1;
+                            while (!extract.WaitForExit(1000))
+                            {
+                                if (_extractionStopRequested || _extractWorker.CancellationPending)
+                                {
+                                    try { extract.Kill(entireProcessTree: true); } catch { try { extract.Kill(); } catch { } }
+                                    try { extract.WaitForExit(15000); } catch { }
+                                    break;
+                                }
+                                try
+                                {
+                                    long bytes = 0;
+                                    if (Directory.Exists(tempOutputDir))
+                                    {
+                                        foreach (var fi in new DirectoryInfo(tempOutputDir).EnumerateFiles("*", SearchOption.AllDirectories))
+                                            bytes += fi.Length;
+                                    }
+                                    int mb = (int)(bytes / (1024 * 1024));
+                                    if (mb != lastMbLogged)
+                                    {
+                                        lastMbLogged = mb;
+                                        SetStatus($"Extracting… {mb} MB written (click Stop Extract to cancel)");
+                                    }
+                                }
+                                catch { }
+                            }
+                            string extractOutput = "";
+                            try { extractOutput = extractReadTask.Result; } catch { extractOutput = ""; }
+
+                            int exitCode = extract.HasExited ? extract.ExitCode : -1;
+                            // exit -1 = killed process (Stop button) — orbis returns 0 on
                             // success and 1 on errors, so -1 is the deterministic kill signal.
                             if (exitCode == -1 || _extractionStopRequested || _extractWorker.CancellationPending)
                             {
@@ -5145,10 +5196,17 @@ namespace PS4PKGTool
                             else
                             {
                                 // Move extracted files from ASCII temp dir to actual output path
+                                // (cross-drive moves copy every file — can take a long time; update UI)
+                                SetStatus($"Moving extracted files to \"{extractLocation}\"…");
                                 if (Directory.Exists(tempOutputDir))
                                 {
                                     foreach (string entry in Directory.GetFileSystemEntries(tempOutputDir))
                                     {
+                                        if (_extractionStopRequested || _extractWorker.CancellationPending)
+                                        {
+                                            e.Cancel = true;
+                                            break;
+                                        }
                                         string dest = Path.Combine(extractLocation, Path.GetFileName(entry));
                                         try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest dir: " + ex.Message); }
                                         if (Directory.Exists(entry))
@@ -5160,9 +5218,11 @@ namespace PS4PKGTool
                                         }
                                     }
                                 }
-                                Logger.LogInformation($"PKG extracted to \"{extractLocation}\".");
-
-                                this.Invoke(() => ShowInformation($"PKG extracted.", false));
+                                if (!e.Cancel)
+                                {
+                                    Logger.LogInformation($"PKG extracted to \"{extractLocation}\".");
+                                    this.Invoke(() => ShowInformation($"PKG extracted.", false));
+                                }
                             }
 
                             // Clean up temp output dir
@@ -6524,79 +6584,103 @@ namespace PS4PKGTool
 
         private void PKGListGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
-            if (e.ColumnIndex != 0)
-                e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-
-            // Apply color label to this specific row only (not the entire grid)
-            if (appSettings_.PkgColorLabel && e.RowIndex >= 0 && e.RowIndex < PKGGridView.Rows.Count)
+            try
             {
+                if (e.ColumnIndex != 0 && e.CellStyle != null)
+                    e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+                // Apply color label to this specific row only (not the entire grid)
+                if (appSettings_ == null || !appSettings_.PkgColorLabel) return;
+                if (e.RowIndex < 0 || e.RowIndex >= PKGGridView.Rows.Count) return;
+
                 var row = PKGGridView.Rows[e.RowIndex];
-                if (row.Cells[8].Value == null) return;
-                string category = row.Cells[8].Value.ToString();
-                Color fore, back;
-                switch (category)
-                {
-                    case PKGCategory.PATCH:
-                        fore = appSettings_.PatchPkgForeColor;
-                        back = appSettings_.PatchPkgBackColor;
-                        break;
-                    case PKGCategory.GAME:
-                        fore = appSettings_.GamePkgForeColor;
-                        back = appSettings_.GamePkgBackColor;
-                        break;
-                    case PKGCategory.ADDON:
-                        fore = appSettings_.AddonPkgForeColor;
-                        back = appSettings_.AddonPkgBackColor;
-                        break;
-                    case PKGCategory.APP:
-                        fore = appSettings_.AppPkgForeColor;
-                        back = appSettings_.AppPkgBackColor;
-                        break;
-                    default:
-                        return;
-                }
+                if (!TryGetRowCategory(row, out string category)) return;
+                if (!TryGetCategoryColors(category, out Color fore, out Color back)) return;
                 e.CellStyle.ForeColor = fore;
                 e.CellStyle.BackColor = back;
+            }
+            catch
+            {
+                // Never let paint-time formatting crash the grid (issues #65 / #74)
+            }
+        }
+
+        private static bool TryGetRowCategory(DataGridViewRow row, out string category)
+        {
+            category = null;
+            if (row == null || row.IsNewRow) return false;
+            try
+            {
+                object value = null;
+                if (row.DataGridView?.Columns.Contains("Category") == true)
+                    value = row.Cells["Category"].Value;
+                else if (row.Cells.Count > 8)
+                    value = row.Cells[8].Value;
+                category = value?.ToString();
+                return !string.IsNullOrEmpty(category);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool TryGetCategoryColors(string category, out Color fore, out Color back)
+        {
+            fore = default;
+            back = default;
+            if (appSettings_ == null) return false;
+            switch (category)
+            {
+                case PKGCategory.PATCH:
+                    fore = appSettings_.PatchPkgForeColor;
+                    back = appSettings_.PatchPkgBackColor;
+                    return true;
+                case PKGCategory.GAME:
+                    fore = appSettings_.GamePkgForeColor;
+                    back = appSettings_.GamePkgBackColor;
+                    return true;
+                case PKGCategory.ADDON:
+                    fore = appSettings_.AddonPkgForeColor;
+                    back = appSettings_.AddonPkgBackColor;
+                    return true;
+                case PKGCategory.APP:
+                    fore = appSettings_.AppPkgForeColor;
+                    back = appSettings_.AppPkgBackColor;
+                    return true;
+                default:
+                    return false;
             }
         }
 
         private void UpdatePKGColorLabel()
         {
-            if (appSettings_.PkgColorLabel)
+            try
             {
-                foreach (DataGridViewRow row in PKGGridView.Rows)
+                if (PKGGridView == null || appSettings_ == null) return;
+                if (appSettings_.PkgColorLabel)
                 {
-                    if (row.IsNewRow || row.Cells[8].Value == null) continue;
-                    string category = row.Cells[8].Value.ToString();
-
-                    switch (category)
+                    foreach (DataGridViewRow row in PKGGridView.Rows)
                     {
-                        case PKGCategory.PATCH:
-                            row.DefaultCellStyle.ForeColor = appSettings_.PatchPkgForeColor;
-                            row.DefaultCellStyle.BackColor = appSettings_.PatchPkgBackColor;
-                            break;
-                        case PKGCategory.GAME:
-                            row.DefaultCellStyle.ForeColor = appSettings_.GamePkgForeColor;
-                            row.DefaultCellStyle.BackColor = appSettings_.GamePkgBackColor;
-                            break;
-                        case PKGCategory.ADDON:
-                            row.DefaultCellStyle.ForeColor = appSettings_.AddonPkgForeColor;
-                            row.DefaultCellStyle.BackColor = appSettings_.AddonPkgBackColor;
-                            break;
-                        case PKGCategory.APP:
-                            row.DefaultCellStyle.ForeColor = appSettings_.AppPkgForeColor;
-                            row.DefaultCellStyle.BackColor = appSettings_.AppPkgBackColor;
-                            break;
+                        if (!TryGetRowCategory(row, out string category)) continue;
+                        if (!TryGetCategoryColors(category, out Color fore, out Color back)) continue;
+                        row.DefaultCellStyle.ForeColor = fore;
+                        row.DefaultCellStyle.BackColor = back;
+                    }
+                }
+                else
+                {
+                    foreach (DataGridViewRow row in PKGGridView.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+                        var isOdd = (row.Index % 2 != 0);
+                        row.DefaultCellStyle = GetCellStyle(isFocused: false, isOdd, isHeader: false);
                     }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                foreach (DataGridViewRow row in PKGGridView.Rows)
-                {
-                    var isOdd = (row.Index % 2 != 0);
-                    row.DefaultCellStyle = GetCellStyle(isFocused: false, isOdd, isHeader: false);
-                }
+                Logger.LogWarning("UpdatePKGColorLabel failed: " + ex.Message);
             }
         }
 
@@ -6621,6 +6705,9 @@ namespace PS4PKGTool
                 string colName = PKGGridView.Columns[e.ColumnIndex].Name;
                 if (string.IsNullOrEmpty(colName)) return;
 
+                // Preserve active search/filter across DataSource swap (issue #65)
+                string savedFilter = dataTable.DefaultView.RowFilter ?? string.Empty;
+
                 // Region column (byte[]) needs special handling
                 if (colName == "Region")
                 {
@@ -6640,6 +6727,7 @@ namespace PS4PKGTool
                     {
                         "Size" => r => ParseSizeToBytes(r["Size"]?.ToString()),
                         "System Version" => r => ParseVersion(r["System Version"]?.ToString() ?? ""),
+                        "Title ID" => _ => 0,
                         _ => r => ParseAppVersion(r["Version [App Version]"]?.ToString() ?? "")
                     };
                     var sorted = dataTable.Rows.Cast<DataRow>().ToList();
@@ -6651,10 +6739,7 @@ namespace PS4PKGTool
                     if (numNext == SortOrder.Descending) sorted.Reverse();
                     var newTable = dataTable.Clone();
                     foreach (var r in sorted) newTable.Rows.Add(r.ItemArray);
-                    PKGGridView.DataSource = newTable;
-                    ScrollToTop();
-                    UpdateDataGridViewColumnVisibility();
-                    PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection = numNext;
+                    ApplySortedTable(newTable, savedFilter, e.ColumnIndex, numNext);
                     return;
                 }
 
@@ -6669,9 +6754,7 @@ namespace PS4PKGTool
                 if (next == SortOrder.Descending) sortedRows.Reverse();
                 var sortedTable = dataTable.Clone();
                 foreach (var r in sortedRows) sortedTable.Rows.Add(r.ItemArray);
-                PKGGridView.DataSource = sortedTable;
-                ScrollToTop();
-                PKGGridView.Columns[e.ColumnIndex].HeaderCell.SortGlyphDirection = next;
+                ApplySortedTable(sortedTable, savedFilter, e.ColumnIndex, next);
             }
             catch (Exception ex)
             {
@@ -6680,13 +6763,50 @@ namespace PS4PKGTool
             }
         }
 
+        private void ApplySortedTable(DataTable sortedTable, string savedFilter, int columnIndex, SortOrder glyph)
+        {
+            PKGGridView.DataSource = sortedTable;
+            try
+            {
+                if (!string.IsNullOrEmpty(savedFilter))
+                    sortedTable.DefaultView.RowFilter = savedFilter;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Could not re-apply grid filter after sort: " + ex.Message);
+            }
+            UpdateDataGridViewColumnVisibility();
+            UpdatePKGColorLabel();
+            ScrollToTop();
+            if (columnIndex >= 0 && columnIndex < PKGGridView.Columns.Count)
+                PKGGridView.Columns[columnIndex].HeaderCell.SortGlyphDirection = glyph;
+            PopulateGroupedView();
+        }
+
         private void ScrollToTop()
         {
-            if (PKGGridView.Rows.Count > 0)
+            try
             {
-                PKGGridView.Rows[0].Selected = true;
-                PKGGridView.CurrentCell = PKGGridView.Rows[0].Cells[0];
-                try { PKGGridView.FirstDisplayedScrollingRowIndex = 0; } catch (Exception ex) { Logger.LogWarning("Failed to scroll grid to top: " + ex.Message); }
+                if (PKGGridView.Rows.Count == 0) return;
+                // Prefer a visible cell — hidden column 0 would throw when setting CurrentCell
+                DataGridViewRow row = PKGGridView.Rows[0];
+                DataGridViewCell cell = null;
+                foreach (DataGridViewCell c in row.Cells)
+                {
+                    if (c.Visible && c.OwningColumn.Visible)
+                    {
+                        cell = c;
+                        break;
+                    }
+                }
+                if (cell == null) return;
+                row.Selected = true;
+                PKGGridView.CurrentCell = cell;
+                PKGGridView.FirstDisplayedScrollingRowIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Failed to scroll grid to top: " + ex.Message);
             }
         }
 
@@ -6714,9 +6834,22 @@ namespace PS4PKGTool
             return a.Length.CompareTo(b.Length);
         }
 
+        /// <summary>
+        /// Decode param.sfo SYSTEM_VER (e.g. 0x0A500000 → "10.50").
+        /// Previous formula used the low 16 bits and showed 10.50 as 1.05 / 0.00.
+        /// </summary>
+        private static string FormatPkgSystemVersion(int value)
+        {
+            if (value == 0) return "0";
+            int major = (value >> 24) & 0xFF;
+            int minor = (value >> 16) & 0xFF;
+            return $"{major}.{minor:X2}";
+        }
+
         private static double ParseVersion(string ver)
         {
             // "4.50" -> 4.5, "11.00" -> 11.0
+            // Minor is hex digits in display (10.50), so parse "10.50" as decimal major.minor text.
             if (string.IsNullOrEmpty(ver) || ver == "NA") return -1;
             if (double.TryParse(ver, System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture, out double v)) return v;
@@ -6881,16 +7014,22 @@ namespace PS4PKGTool
             {
                 var dt = PKGGridView.DataSource as DataTable;
                 if (dt == null) return;
-                string text = tbSearchGame.Text.Replace("'", "''"); // escape single quotes for LIKE
-                dt.DefaultView.RowFilter = string.IsNullOrEmpty(text)
+                // Escape LIKE wildcards and quotes so filter text cannot break RowFilter (issue #65)
+                string text = (tbSearchGame.Text ?? "")
+                    .Replace("'", "''")
+                    .Replace("[", "[[]")
+                    .Replace("%", "[%]")
+                    .Replace("*", "[*]");
+                dt.DefaultView.RowFilter = string.IsNullOrEmpty(tbSearchGame.Text)
                     ? string.Empty
                     : $"[Filename] LIKE '%{text}%' OR [Title] LIKE '%{text}%' OR [Title ID] LIKE '%{text}%' OR [Content ID] LIKE '%{text}%'";
+                try { UpdatePKGColorLabel(); } catch { }
                 PopulateGroupedView(); // GLV mirrors the search result set
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error applying filter: {ex.Message}");
-                ShowError($"Error applying filter: {ex.Message}", true);
+                // Do not ShowError on every keystroke — log only to avoid modal spam mid-typing
             }
         }
 

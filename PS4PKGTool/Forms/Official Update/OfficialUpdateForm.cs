@@ -335,14 +335,12 @@ namespace PS4PKGTool
 
             try
             {
+                // SYSTEM_VER is packed as 0xMMmm0000 → major.minor (e.g. 0x0A500000 → 10.50)
                 int value = Convert.ToInt32(sysVer);
-                string hex = string.Format("{0:X}", value);
-                if (hex.Length >= 3)
-                {
-                    string f3 = hex.Substring(0, 3);
-                    return f3.Insert(1, ".");
-                }
-                return hex;
+                if (value == 0) return "0";
+                int major = (value >> 24) & 0xFF;
+                int minor = (value >> 16) & 0xFF;
+                return $"{major}.{minor:X2}";
             }
             catch
             {
