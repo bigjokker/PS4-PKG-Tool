@@ -294,19 +294,7 @@ namespace PS4PKGTool
         }
 
         /// <summary>Move a file, falling back to copy+delete when volumes differ (e.g. D: PKG → C: temp).</summary>
-        private static void SafeMoveFile(string src, string dst)
-        {
-            try
-            {
-                if (File.Exists(dst)) File.Delete(dst);
-                File.Move(src, dst);
-            }
-            catch (IOException)
-            {
-                File.Copy(src, dst, overwrite: true);
-                try { File.Delete(src); } catch { /* leave source if delete fails after copy */ }
-            }
-        }
+        private static void SafeMoveFile(string src, string dst) => OrbisTempSafety.SafeMoveFile(src, dst);
 
         /// <summary>
         /// Wait for orbis-pub-cmd without a hard 10-minute kill (issue #76).
@@ -440,6 +428,24 @@ namespace PS4PKGTool
                 this.Text = "PS4 PKG Tool " + ApplicationVersion;
                 await Task.Run(() =>
             {
+                // Recover PKG renames left behind by a crash mid-extract/view, and prune old temps.
+                try
+                {
+                    var recoveryRoots = new List<string>();
+                    if (appSettings_?.PkgDirectories != null)
+                        recoveryRoots.AddRange(appSettings_.PkgDirectories);
+                    recoveryRoots.Add(GetAsciiTempRoot());
+                    recoveryRoots.Add(Path.GetTempPath());
+                    int restored = OrbisTempSafety.RecoverOrphanedPkgs(recoveryRoots);
+                    int cleaned = OrbisTempSafety.CleanupStaleTempDirectories(TimeSpan.FromHours(6));
+                    if (restored > 0 || cleaned > 0)
+                        Logger.LogInformation($"Startup reliability: restored {restored} orphan PKG(s), cleaned {cleaned} temp folder(s).");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning("Startup orphan/temp cleanup failed: " + ex.Message);
+                }
+
                 Logger.LogInformation("Selected directory: ");
 
                 foreach (var folder in appSettings_.PkgDirectories)
@@ -4824,7 +4830,7 @@ namespace PS4PKGTool
                 origPath = PKG.SelectedPKGFilename;
                 string dir = GetOrbisTempDirFor(origPath);
                 tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                SafeMoveFile(origPath, tempPath);
+                OrbisTempSafety.BeginOrbisPkgRename(origPath, tempPath);
                 renamed = true;
                 string safePkgPath = tempPath;
 
@@ -4946,19 +4952,19 @@ namespace PS4PKGTool
                 }
                 finally
                 {
-                    if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
+                    if (renamed)
                     {
-                        try { SafeMoveFile(tempPath, origPath); } catch { }
+                        try { OrbisTempSafety.EndOrbisPkgRestore(tempPath, origPath); } catch { }
                     }
                     DeleteOrbisTempDir(tempPath);
                 }
             };
             bg.RunWorkerCompleted += delegate (object sender, RunWorkerCompletedEventArgs e)
             {
-                // Restore original filename
-                if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
+                // Restore original filename (in case finally did not run on abort)
+                if (renamed && File.Exists(tempPath))
                 {
-                    try { SafeMoveFile(tempPath, origPath); }
+                    try { OrbisTempSafety.EndOrbisPkgRestore(tempPath, origPath); }
                     catch (Exception ex) { Logger.LogError("Failed to restore PKG filename. Recover from " + tempPath + ": " + ex.Message); }
                 }
                 DeleteOrbisTempDir(tempPath);
@@ -5120,8 +5126,16 @@ namespace PS4PKGTool
                 _extractWorker = new BackgroundWorker { WorkerSupportsCancellation = true };
                 if (ShowFolderBrowserDialog(out FolderBrowserDialog fbd))
                 {
-                    Helper.IsOperationRunning = true;
                     string extractLocation = fbd.SelectedPath;
+                    string pkgForSpace = PKG.SelectedPKGFilename;
+                    if (!string.IsNullOrEmpty(pkgForSpace)
+                        && !OrbisTempSafety.HasEnoughDiskSpaceForExtract(pkgForSpace, extractLocation, out string spaceMsg))
+                    {
+                        ShowError(spaceMsg ?? "Not enough free disk space to extract.", true);
+                        return;
+                    }
+
+                    Helper.IsOperationRunning = true;
                     btnExtractFullPKG.Text = "Stop Extract";
                     SetExtractionUiEnabled(false); // lock the app — only the stop button stays usable
                     listView1?.Invalidate();       // force the DLV to repaint in its disabled (grey) state
@@ -5165,7 +5179,7 @@ namespace PS4PKGTool
                         string dir = GetOrbisTempDirFor(origPath);
                         string tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                         bool renamed = false;
-                        SafeMoveFile(origPath, tempPath);
+                        OrbisTempSafety.BeginOrbisPkgRename(origPath, tempPath);
                         renamed = true;
                         string pkgPath = tempPath;
 
@@ -5261,15 +5275,9 @@ namespace PS4PKGTool
                         }
                         finally
                         {
-                            if (renamed && File.Exists(tempPath))
+                            if (renamed)
                             {
-                                try
-                                {
-                                    if (File.Exists(origPath))
-                                        Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + tempPath);
-                                    else
-                                        SafeMoveFile(tempPath, origPath);
-                                }
+                                try { OrbisTempSafety.EndOrbisPkgRestore(tempPath, origPath); }
                                 catch (Exception ex)
                                 {
                                     Logger.LogError("Failed to restore PKG filename. Recover the PKG from " + tempPath + ": " + ex.Message);
@@ -5407,7 +5415,7 @@ namespace PS4PKGTool
                     string renameDir = GetOrbisTempDirFor(in_path);
                     string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                     bool wasRenamed = false;
-                    SafeMoveFile(in_path, renameTmp);
+                    OrbisTempSafety.BeginOrbisPkgRename(in_path, renameTmp);
                     wasRenamed = true;
                     string safeIn = renameTmp;
 
@@ -5487,15 +5495,9 @@ namespace PS4PKGTool
                     }
                     finally
                     {
-                        if (wasRenamed && File.Exists(renameTmp))
+                        if (wasRenamed)
                         {
-                            try
-                            {
-                                if (File.Exists(in_path))
-                                    Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
-                                else
-                                    SafeMoveFile(renameTmp, in_path);
-                            }
+                            try { OrbisTempSafety.EndOrbisPkgRestore(renameTmp, in_path); }
                             catch (Exception rex)
                             {
                                 Logger.LogInformation($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
@@ -5553,7 +5555,7 @@ namespace PS4PKGTool
             string renameDir = GetOrbisTempDirFor(inPath);
             string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
             bool wasRenamed = false;
-            SafeMoveFile(inPath, renameTmp);
+            OrbisTempSafety.BeginOrbisPkgRename(inPath, renameTmp);
             wasRenamed = true;
             string safeIn = renameTmp;
 
@@ -5639,15 +5641,9 @@ namespace PS4PKGTool
             }
             finally
             {
-                if (wasRenamed && File.Exists(renameTmp))
+                if (wasRenamed)
                 {
-                    try
-                    {
-                        if (File.Exists(inPath))
-                            Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
-                        else
-                            SafeMoveFile(renameTmp, inPath);
-                    }
+                    try { OrbisTempSafety.EndOrbisPkgRestore(renameTmp, inPath); }
                     catch (Exception rex)
                     {
                         Logger.LogInformation($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
@@ -5891,7 +5887,7 @@ namespace PS4PKGTool
 
             try
             {
-                SafeMoveFile(origPath, renameTmp);
+                OrbisTempSafety.BeginOrbisPkgRename(origPath, renameTmp);
                 renamed = true;
                 tempDir = CreateOrbisTempDir("c"); // short ASCII temp root (see CreateOrbisTempDir)
                 string orbisPubCmdErrorMessage = "";
@@ -5958,15 +5954,9 @@ namespace PS4PKGTool
             }
             finally
             {
-                if (renamed && File.Exists(renameTmp))
+                if (renamed)
                 {
-                    try
-                    {
-                        if (File.Exists(origPath))
-                            Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
-                        else
-                            SafeMoveFile(renameTmp, origPath);
-                    }
+                    try { OrbisTempSafety.EndOrbisPkgRestore(renameTmp, origPath); }
                     catch (Exception rex)
                     {
                         Logger.LogInformation($"CRITICAL: Failed to restore PKG! File at: {renameTmp}");
