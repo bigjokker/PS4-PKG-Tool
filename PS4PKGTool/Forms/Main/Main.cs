@@ -1,4 +1,4 @@
-﻿using ByteSizeLib;
+using ByteSizeLib;
 using ClosedXML.Excel;
 using DarkUI.Config;
 using DarkUI.Controls;
@@ -4716,20 +4716,22 @@ namespace PS4PKGTool
         /// Returns a writable directory on the same drive for the orbis temp rename.
         /// If the PKG's own directory is already ASCII, it's used (in-place rename).
         /// Otherwise walks up to the nearest ASCII-named ancestor and creates a
-        /// short temp dir there — the drive root is NOT used (not writable without
-        /// admin on C:).
+        /// short temp dir there. Prefers same-volume ASCII roots so multi-GB PKGs can
+        /// File.Move without a cross-drive copy. Never hands orbis a non-ASCII path.
         /// </summary>
         private static string GetOrbisTempDirFor(string pkgPath)
         {
             string dir = Path.GetDirectoryName(pkgPath);
-            if (!string.IsNullOrEmpty(dir) && dir.All(c => c < 128))
+            if (!string.IsNullOrEmpty(dir) && dir.IsAsciiPath())
                 return dir;
 
-            while (!string.IsNullOrEmpty(dir) && !dir.All(c => c < 128))
+            while (!string.IsNullOrEmpty(dir) && !dir.IsAsciiPath())
                 dir = Path.GetDirectoryName(dir);
 
-            if (string.IsNullOrEmpty(dir))
-                dir = Path.GetTempPath(); // fallback — rare, all-ancestors-Unicode
+            // No ASCII ancestor (e.g. D:\ゲーム\title.pkg) — pick a writable ASCII root,
+            // preferring the PKG's volume when possible.
+            if (string.IsNullOrEmpty(dir) || !dir.IsAsciiPath())
+                dir = GetAsciiTempRoot(pkgPath);
 
             string temp = Path.Combine(dir, "p4t_v_" + Guid.NewGuid().ToString("N").Substring(0, 6));
             Directory.CreateDirectory(temp);
@@ -5453,7 +5455,9 @@ namespace PS4PKGTool
 
         /// <summary>
         /// Synchronous version of ExtractSelectedPKGData for drag-drop.
-        /// orbis-pub-cmd needs the target directory to exist, so we pre-create it.
+        /// Always routes orbis-pub-cmd through ASCII-safe temp paths: non-ASCII titles
+        /// (e.g. fullwidth ＆, Japanese) cause "in_path or out_path is invalid" if passed
+        /// directly. Extracted files are then moved to the real destination.
         /// </summary>
         private void ExtractFilesSync(List<string> nodeList, string extractLocation, bool preserveStructure)
         {
@@ -5475,11 +5479,19 @@ namespace PS4PKGTool
                         ? Path.Combine(extractLocation, targ_path.TrimEnd('/').Replace("/", @"\"))
                         : Path.Combine(extractLocation, Path.GetFileName(targ_path.TrimEnd('/')));
 
-                    // Pre-create output directory/file path
+                    // Pre-create final destination (may contain Unicode — fine for .NET / NTFS).
                     if (isDirectory)
                         Directory.CreateDirectory(out_path);
                     else
                         Directory.CreateDirectory(Path.GetDirectoryName(out_path) ?? extractLocation);
+
+                    // ASCII-only temp output for orbis-pub-cmd (mirrors ExtractSelectedPKGData).
+                    string tempBase = CreateOrbisTempDir("x");
+                    string tempOutPath = isDirectory
+                        ? tempBase
+                        : Path.Combine(tempBase, Path.GetFileName(out_path).ToOrbisSafeName());
+                    if (!isDirectory)
+                        Directory.CreateDirectory(Path.GetDirectoryName(tempOutPath) ?? tempBase);
 
                     string arcPath = isDirectory ? targ_path : targ_path.TrimEnd('/');
                     var extractStartInfo = new ProcessStartInfo
@@ -5493,7 +5505,7 @@ namespace PS4PKGTool
                     extractStartInfo.ArgumentList.Add("--passcode");
                     extractStartInfo.ArgumentList.Add(DefaultOrbisPasscode);
                     extractStartInfo.ArgumentList.Add(safeIn + ":" + arcPath);
-                    extractStartInfo.ArgumentList.Add(out_path);
+                    extractStartInfo.ArgumentList.Add(tempOutPath);
                     using var proc = new Process { StartInfo = extractStartInfo };
                     proc.Start();
                     Task<string> procReadTask = proc.StandardOutput.ReadToEndAsync();
@@ -5501,7 +5513,42 @@ namespace PS4PKGTool
                     {
                         try { proc.Kill(); proc.WaitForExit(); } catch { }
                     }
-                    _ = procReadTask.Result; // drain so a stalled process cannot deadlock the pipe
+                    string extractOutput = procReadTask.Result;
+                    int exitCode = proc.ExitCode;
+
+                    if (exitCode == 0)
+                    {
+                        if (isDirectory)
+                        {
+                            if (Directory.Exists(tempOutPath))
+                            {
+                                foreach (string entry in Directory.GetFileSystemEntries(tempOutPath))
+                                {
+                                    string dest = Path.Combine(out_path, Path.GetFileName(entry));
+                                    try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest dir: " + ex.Message); }
+                                    if (Directory.Exists(entry))
+                                        SafeMoveDirectory(entry, dest);
+                                    else
+                                    {
+                                        try { if (File.Exists(dest)) File.Delete(dest); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest file: " + ex.Message); }
+                                        File.Move(entry, dest);
+                                    }
+                                }
+                            }
+                        }
+                        else if (File.Exists(tempOutPath))
+                        {
+                            try { if (File.Exists(out_path)) File.Delete(out_path); } catch (Exception ex) { Logger.LogWarning("Failed to delete output file: " + ex.Message); }
+                            File.Move(tempOutPath, out_path);
+                        }
+                    }
+                    else
+                    {
+                        string errMsg = FormatOrbisError(extractOutput);
+                        Logger.LogError($"orbis-pub-cmd failed (sync) for \"{targ_path}\": exit={exitCode}\n{errMsg}");
+                    }
+
+                    try { if (Directory.Exists(tempBase)) Directory.Delete(tempBase, true); } catch (Exception ex) { Logger.LogWarning("Failed to clean sync extract temp: " + ex.Message); }
                 }
             }
             finally
