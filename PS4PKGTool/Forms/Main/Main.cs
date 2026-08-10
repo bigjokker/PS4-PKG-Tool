@@ -293,6 +293,44 @@ namespace PS4PKGTool
             }
         }
 
+        /// <summary>Move a file, falling back to copy+delete when volumes differ (e.g. D: PKG → C: temp).</summary>
+        private static void SafeMoveFile(string src, string dst)
+        {
+            try
+            {
+                if (File.Exists(dst)) File.Delete(dst);
+                File.Move(src, dst);
+            }
+            catch (IOException)
+            {
+                File.Copy(src, dst, overwrite: true);
+                try { File.Delete(src); } catch { /* leave source if delete fails after copy */ }
+            }
+        }
+
+        /// <summary>
+        /// Wait for orbis-pub-cmd without a hard 10-minute kill (issue #76).
+        /// Polls every second for cancel; optional progress callback for UI status.
+        /// </summary>
+        private bool WaitForOrbisProcess(Process extract, Func<bool> isCancelRequested, Action onProgressTick = null)
+        {
+            int ticks = 0;
+            while (!extract.WaitForExit(1000))
+            {
+                if (isCancelRequested())
+                {
+                    try { extract.Kill(entireProcessTree: true); } catch { try { extract.Kill(); } catch { } }
+                    try { extract.WaitForExit(15000); } catch { }
+                    return false; // cancelled / killed
+                }
+                ticks++;
+                // Throttle progress work (full tree size scan is expensive on large extracts)
+                if (onProgressTick != null && ticks % 3 == 0)
+                    onProgressTick();
+            }
+            return true; // exited on its own
+        }
+
         private string GroupByColumn =>
             cbGroupBy.SelectedItem?.ToString() ?? "Category";
 
@@ -2126,8 +2164,8 @@ namespace PS4PKGTool
                         {
                             if (t.Name == "SYSTEM_VER")
                             {
-                                if (int.TryParse(t.Value, out int value) && value != 0)
-                                    pkgMinFirmware = FormatPkgSystemVersion(value);
+                                if (uint.TryParse(t.Value, out uint value) && value != 0)
+                                    pkgMinFirmware = FormatPkgSystemVersion(unchecked((int)value));
                                 else pkgMinFirmware = t.Value;
                             }
                             if (t.Name == "VERSION") pkgVersion = verRegex2.Replace(t.Value, "");
@@ -2487,8 +2525,8 @@ namespace PS4PKGTool
                     {
                         if (t.Name == "SYSTEM_VER")
                         {
-                            if (int.TryParse(t.Value, out int value) && value != 0)
-                                pkgSystemVersion = FormatPkgSystemVersion(value);
+                            if (uint.TryParse(t.Value, out uint value) && value != 0)
+                                pkgSystemVersion = FormatPkgSystemVersion(unchecked((int)value));
                             else pkgSystemVersion = t.Value;
                         }
                         if (t.Name == "VERSION")
@@ -4786,7 +4824,7 @@ namespace PS4PKGTool
                 origPath = PKG.SelectedPKGFilename;
                 string dir = GetOrbisTempDirFor(origPath);
                 tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
-                File.Move(origPath, tempPath);
+                SafeMoveFile(origPath, tempPath);
                 renamed = true;
                 string safePkgPath = tempPath;
 
@@ -4910,7 +4948,7 @@ namespace PS4PKGTool
                 {
                     if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
                     {
-                        try { File.Move(tempPath, origPath); } catch { }
+                        try { SafeMoveFile(tempPath, origPath); } catch { }
                     }
                     DeleteOrbisTempDir(tempPath);
                 }
@@ -4920,7 +4958,7 @@ namespace PS4PKGTool
                 // Restore original filename
                 if (renamed && File.Exists(tempPath) && !File.Exists(origPath))
                 {
-                    try { File.Move(tempPath, origPath); }
+                    try { SafeMoveFile(tempPath, origPath); }
                     catch (Exception ex) { Logger.LogError("Failed to restore PKG filename. Recover from " + tempPath + ": " + ex.Message); }
                 }
                 DeleteOrbisTempDir(tempPath);
@@ -5127,7 +5165,7 @@ namespace PS4PKGTool
                         string dir = GetOrbisTempDirFor(origPath);
                         string tempPath = Path.Combine(dir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                         bool renamed = false;
-                        File.Move(origPath, tempPath);
+                        SafeMoveFile(origPath, tempPath);
                         renamed = true;
                         string pkgPath = tempPath;
 
@@ -5149,41 +5187,37 @@ namespace PS4PKGTool
                             extract.Start();
                             Task<string> extractReadTask = extract.StandardOutput.ReadToEndAsync();
 
-                            // Poll instead of a hard 10-minute kill (issue #76 — large PKGs need longer;
-                            // the old 600000 ms timeout left partial extracts and a stuck "Stop Extract").
+                            // No hard 10-minute kill (issue #76). Poll for cancel; report size every ~3s.
                             int lastMbLogged = -1;
-                            while (!extract.WaitForExit(1000))
-                            {
-                                if (_extractionStopRequested || _extractWorker.CancellationPending)
+                            bool finishedCleanly = WaitForOrbisProcess(
+                                extract,
+                                () => _extractionStopRequested || _extractWorker.CancellationPending,
+                                () =>
                                 {
-                                    try { extract.Kill(entireProcessTree: true); } catch { try { extract.Kill(); } catch { } }
-                                    try { extract.WaitForExit(15000); } catch { }
-                                    break;
-                                }
-                                try
-                                {
-                                    long bytes = 0;
-                                    if (Directory.Exists(tempOutputDir))
+                                    try
                                     {
-                                        foreach (var fi in new DirectoryInfo(tempOutputDir).EnumerateFiles("*", SearchOption.AllDirectories))
-                                            bytes += fi.Length;
+                                        long bytes = 0;
+                                        if (Directory.Exists(tempOutputDir))
+                                        {
+                                            foreach (var fi in new DirectoryInfo(tempOutputDir).EnumerateFiles("*", SearchOption.AllDirectories))
+                                                bytes += fi.Length;
+                                        }
+                                        int mb = (int)(bytes / (1024 * 1024));
+                                        if (mb != lastMbLogged)
+                                        {
+                                            lastMbLogged = mb;
+                                            SetStatus($"Extracting… {mb} MB written (click Stop Extract to cancel)");
+                                        }
                                     }
-                                    int mb = (int)(bytes / (1024 * 1024));
-                                    if (mb != lastMbLogged)
-                                    {
-                                        lastMbLogged = mb;
-                                        SetStatus($"Extracting… {mb} MB written (click Stop Extract to cancel)");
-                                    }
-                                }
-                                catch { }
-                            }
+                                    catch { }
+                                });
+
                             string extractOutput = "";
                             try { extractOutput = extractReadTask.Result; } catch { extractOutput = ""; }
 
                             int exitCode = extract.HasExited ? extract.ExitCode : -1;
-                            // exit -1 = killed process (Stop button) — orbis returns 0 on
-                            // success and 1 on errors, so -1 is the deterministic kill signal.
-                            if (exitCode == -1 || _extractionStopRequested || _extractWorker.CancellationPending)
+                            // Cancelled / killed — orbis returns 0 on success and non-zero on errors.
+                            if (!finishedCleanly || _extractionStopRequested || _extractWorker.CancellationPending)
                             {
                                 e.Cancel = true; // so RunWorkerCompleted shows "Extraction cancelled."
                             }
@@ -5212,10 +5246,7 @@ namespace PS4PKGTool
                                         if (Directory.Exists(entry))
                                             SafeMoveDirectory(entry, dest);
                                         else
-                                        {
-                                            try { if (File.Exists(dest)) File.Delete(dest); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest file: " + ex.Message); }
-                                            File.Move(entry, dest);
-                                        }
+                                            SafeMoveFile(entry, dest);
                                     }
                                 }
                                 if (!e.Cancel)
@@ -5237,7 +5268,7 @@ namespace PS4PKGTool
                                     if (File.Exists(origPath))
                                         Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + tempPath);
                                     else
-                                        File.Move(tempPath, origPath);
+                                        SafeMoveFile(tempPath, origPath);
                                 }
                                 catch (Exception ex)
                                 {
@@ -5376,7 +5407,7 @@ namespace PS4PKGTool
                     string renameDir = GetOrbisTempDirFor(in_path);
                     string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
                     bool wasRenamed = false;
-                    File.Move(in_path, renameTmp);
+                    SafeMoveFile(in_path, renameTmp);
                     wasRenamed = true;
                     string safeIn = renameTmp;
 
@@ -5386,7 +5417,7 @@ namespace PS4PKGTool
                     Directory.CreateDirectory(tempBase);
                     string tempOutPath = isDirectory
                         ? tempBase
-                        : Path.Combine(tempBase, Path.GetFileName(out_path));
+                        : Path.Combine(tempBase, Path.GetFileName(out_path).ToOrbisSafeName());
 
                     var extractStartInfo = new ProcessStartInfo
                     {
@@ -5403,20 +5434,19 @@ namespace PS4PKGTool
                     using Process extract = new Process { StartInfo = extractStartInfo };
                     extract.Start();
                     Task<string> extractReadTask = extract.StandardOutput.ReadToEndAsync();
-                    if (!extract.WaitForExit(600000))
-                    {
-                        try { extract.Kill(); extract.WaitForExit(); } catch { }
-                    }
-                    string extractOutput = extractReadTask.Result;
+                    bool finishedCleanly = WaitForOrbisProcess(
+                        extract,
+                        () => _extractionStopRequested || bgw.CancellationPending);
+                    string extractOutput = "";
+                    try { extractOutput = extractReadTask.Result; } catch { extractOutput = ""; }
 
                     try
                     {
-                        int exitCode = extract.ExitCode;
-                        // exit -1 = killed process (Stop button or timeout) — see ExtractFullPKG.
-                        if (exitCode == -1 || _extractionStopRequested || bgw.CancellationPending)
+                        int exitCode = extract.HasExited ? extract.ExitCode : -1;
+                        if (!finishedCleanly || _extractionStopRequested || bgw.CancellationPending)
                         {
-                            // User stopped — the killed process returns a non-zero exit code; not a real failure.
-                            // The outer loop's cancellation check will set args.Cancel and the completion shows "Extraction cancelled."
+                            // User stopped — not a real failure. Outer loop will surface cancel.
+                            args.Cancel = true;
                         }
                         else if (exitCode == 0)
                         {
@@ -5432,10 +5462,7 @@ namespace PS4PKGTool
                                         if (Directory.Exists(entry))
                                             SafeMoveDirectory(entry, dest);
                                         else
-                                        {
-                                            try { if (File.Exists(dest)) File.Delete(dest); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest file: " + ex.Message); }
-                                            File.Move(entry, dest);
-                                        }
+                                            SafeMoveFile(entry, dest);
                                     }
                                 }
                             }
@@ -5446,8 +5473,7 @@ namespace PS4PKGTool
                                     string destDir = Path.GetDirectoryName(out_path);
                                     if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
                                         Directory.CreateDirectory(destDir);
-                                    try { if (File.Exists(out_path)) File.Delete(out_path); } catch (Exception ex) { Logger.LogWarning("Failed to delete output file: " + ex.Message); }
-                                    File.Move(tempOutPath, out_path);
+                                    SafeMoveFile(tempOutPath, out_path);
                                 }
                             }
                             Logger.LogInformation($"File extracted to \"{out_path}\"");
@@ -5468,7 +5494,7 @@ namespace PS4PKGTool
                                 if (File.Exists(in_path))
                                     Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
                                 else
-                                    File.Move(renameTmp, in_path);
+                                    SafeMoveFile(renameTmp, in_path);
                             }
                             catch (Exception rex)
                             {
@@ -5481,6 +5507,8 @@ namespace PS4PKGTool
 
                     // Clean up temp dir
                     try { if (Directory.Exists(tempBase)) Directory.Delete(tempBase, true); } catch (Exception ex) { Logger.LogWarning("Failed to clean temp base dir: " + ex.Message); }
+
+                    if (args.Cancel) break;
                 }
             };
             bgw.RunWorkerCompleted += delegate (object s, RunWorkerCompletedEventArgs e)
@@ -5525,7 +5553,7 @@ namespace PS4PKGTool
             string renameDir = GetOrbisTempDirFor(inPath);
             string renameTmp = Path.Combine(renameDir, "ps4pkgtool_orbis_" + Guid.NewGuid().ToString("N") + ".pkg");
             bool wasRenamed = false;
-            File.Move(inPath, renameTmp);
+            SafeMoveFile(inPath, renameTmp);
             wasRenamed = true;
             string safeIn = renameTmp;
 
@@ -5569,14 +5597,12 @@ namespace PS4PKGTool
                     using var proc = new Process { StartInfo = extractStartInfo };
                     proc.Start();
                     Task<string> procReadTask = proc.StandardOutput.ReadToEndAsync();
-                    if (!proc.WaitForExit(600000))
-                    {
-                        try { proc.Kill(); proc.WaitForExit(); } catch { }
-                    }
-                    string extractOutput = procReadTask.Result;
-                    int exitCode = proc.ExitCode;
+                    bool finishedCleanly = WaitForOrbisProcess(proc, () => _extractionStopRequested);
+                    string extractOutput = "";
+                    try { extractOutput = procReadTask.Result; } catch { extractOutput = ""; }
+                    int exitCode = proc.HasExited ? proc.ExitCode : -1;
 
-                    if (exitCode == 0)
+                    if (finishedCleanly && exitCode == 0)
                     {
                         if (isDirectory)
                         {
@@ -5589,18 +5615,18 @@ namespace PS4PKGTool
                                     if (Directory.Exists(entry))
                                         SafeMoveDirectory(entry, dest);
                                     else
-                                    {
-                                        try { if (File.Exists(dest)) File.Delete(dest); } catch (Exception ex) { Logger.LogWarning("Failed to delete dest file: " + ex.Message); }
-                                        File.Move(entry, dest);
-                                    }
+                                        SafeMoveFile(entry, dest);
                                 }
                             }
                         }
                         else if (File.Exists(tempOutPath))
                         {
-                            try { if (File.Exists(out_path)) File.Delete(out_path); } catch (Exception ex) { Logger.LogWarning("Failed to delete output file: " + ex.Message); }
-                            File.Move(tempOutPath, out_path);
+                            SafeMoveFile(tempOutPath, out_path);
                         }
+                    }
+                    else if (!finishedCleanly)
+                    {
+                        Logger.LogWarning($"Sync extract cancelled for \"{targ_path}\"");
                     }
                     else
                     {
@@ -5620,7 +5646,7 @@ namespace PS4PKGTool
                         if (File.Exists(inPath))
                             Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
                         else
-                            File.Move(renameTmp, inPath);
+                            SafeMoveFile(renameTmp, inPath);
                     }
                     catch (Exception rex)
                     {
@@ -5865,7 +5891,7 @@ namespace PS4PKGTool
 
             try
             {
-                File.Move(origPath, renameTmp);
+                SafeMoveFile(origPath, renameTmp);
                 renamed = true;
                 tempDir = CreateOrbisTempDir("c"); // short ASCII temp root (see CreateOrbisTempDir)
                 string orbisPubCmdErrorMessage = "";
@@ -5889,11 +5915,14 @@ namespace PS4PKGTool
                 extract.Start();
                 extract.BeginErrorReadLine();
                 Task<string> extractStdoutTask = extract.StandardOutput.ReadToEndAsync();
-                if (!extract.WaitForExit(600000))
+                // changeinfo is tiny; 2-minute cap is enough, still respects no infinite hang
+                if (!extract.WaitForExit(120000))
                 {
-                    try { extract.Kill(); extract.WaitForExit(); } catch { }
+                    try { extract.Kill(entireProcessTree: true); } catch { try { extract.Kill(); } catch { } }
+                    try { extract.WaitForExit(10000); } catch { }
                 }
-                string extractStdout = extractStdoutTask.Result;
+                string extractStdout = "";
+                try { extractStdout = extractStdoutTask.Result; } catch { extractStdout = ""; }
 
                 foreach (string line in extractStdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                 {
@@ -5936,7 +5965,7 @@ namespace PS4PKGTool
                         if (File.Exists(origPath))
                             Logger.LogError("Failed to restore PKG filename because the original path already exists. Recover the PKG from: " + renameTmp);
                         else
-                            File.Move(renameTmp, origPath);
+                            SafeMoveFile(renameTmp, origPath);
                     }
                     catch (Exception rex)
                     {
@@ -6840,9 +6869,10 @@ namespace PS4PKGTool
         /// </summary>
         private static string FormatPkgSystemVersion(int value)
         {
-            if (value == 0) return "0";
-            int major = (value >> 24) & 0xFF;
-            int minor = (value >> 16) & 0xFF;
+            uint v = unchecked((uint)value);
+            if (v == 0) return "0";
+            int major = (int)((v >> 24) & 0xFF);
+            int minor = (int)((v >> 16) & 0xFF);
             return $"{major}.{minor:X2}";
         }
 
