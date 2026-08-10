@@ -90,9 +90,12 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
                 if (!seen.Add(orphan)) continue;
                 try
                 {
-                    if (TryRestoreFromSidecar(orphan))
+                    // If a sidecar exists, only attempt path restore — never fall through to
+                    // Title-ID rename (that would "recover" a conflict temp into a new name).
+                    if (File.Exists(SidecarPath(orphan)))
                     {
-                        recovered++;
+                        if (TryRestoreFromSidecar(orphan))
+                            recovered++;
                         continue;
                     }
                     if (TryRecoverWithoutSidecar(orphan))
