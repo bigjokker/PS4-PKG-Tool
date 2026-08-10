@@ -5230,16 +5230,28 @@ namespace PS4PKGTool
                             try { extractOutput = extractReadTask.Result; } catch { extractOutput = ""; }
 
                             int exitCode = extract.HasExited ? extract.ExitCode : -1;
-                            // Cancelled / killed — orbis returns 0 on success and non-zero on errors.
-                            if (!finishedCleanly || _extractionStopRequested || _extractWorker.CancellationPending)
+                            // Stop button kills orbis externally — treat any cancel flag as user stop,
+                            // not an orbis error (avoids "(no output from orbis-pub-cmd)" on Stop).
+                            bool userCancelled = !finishedCleanly
+                                || _extractionStopRequested
+                                || _extractWorker.CancellationPending;
+                            if (userCancelled)
                             {
-                                e.Cancel = true; // so RunWorkerCompleted shows "Extraction cancelled."
+                                e.Cancel = true; // RunWorkerCompleted → "Extraction cancelled."
                             }
                             else if (exitCode != 0)
                             {
-                                string errMsg = FormatOrbisError(extractOutput);
-                                Logger.LogError($"orbis-pub-cmd exit code: {exitCode}, cancelPending={_extractWorker.CancellationPending}\n{errMsg}");
-                                this.Invoke(() => ShowError($"orbis-pub-cmd error:\n{errMsg}", true));
+                                // Re-check: KillProcess may have exited the process before the flag was visible.
+                                if (_extractionStopRequested || _extractWorker.CancellationPending)
+                                {
+                                    e.Cancel = true;
+                                }
+                                else
+                                {
+                                    string errMsg = FormatOrbisError(extractOutput);
+                                    Logger.LogError($"orbis-pub-cmd exit code: {exitCode}, cancelPending={_extractWorker.CancellationPending}\n{errMsg}");
+                                    this.Invoke(() => ShowError($"orbis-pub-cmd error:\n{errMsg}", true));
+                                }
                             }
                             else
                             {
@@ -6915,17 +6927,18 @@ namespace PS4PKGTool
             bool anyRunning = false;
             if (_extractWorker != null && _extractWorker.IsBusy)
             {
-                KillProcess("orbis-pub-cmd");
-                Helper.IsOperationRunning = false;
+                // Set cancel flag BEFORE killing orbis so the worker never treats a kill as a hard error.
                 _extractionStopRequested = true; // volatile — reliable across the worker thread
+                Helper.IsOperationRunning = false;
                 _extractWorker.CancelAsync();
+                KillProcess("orbis-pub-cmd");
                 anyRunning = true;
             }
             if (_selectedExtractWorker != null && _selectedExtractWorker.IsBusy)
             {
-                KillProcess("orbis-pub-cmd");
                 _extractionStopRequested = true; // volatile — reliable across the worker thread
                 _selectedExtractWorker.CancelAsync();
+                KillProcess("orbis-pub-cmd");
                 anyRunning = true;
             }
             if (anyRunning)
