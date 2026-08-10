@@ -477,12 +477,17 @@ namespace PS4PKGTool
             List<string> directories = lbPkgDirectoryList.Items.Cast<string>().ToList();
             if (directories.Count == 0)
             {
-                ShowWarning("Add at least one PKG directory before building the trophy metadata cache.", false);
+                ShowWarning(
+                    "No PKG folders are configured yet.\n\n" +
+                    "1. Open the General tab\n" +
+                    "2. Add at least one folder that contains your .pkg files\n" +
+                    "3. Return here and click Build Trophy Metadata Cache",
+                    false);
                 return;
             }
             if (!File.Exists(OrbisPubCmd))
             {
-                ShowError("Missing orbis-pub-cmd.exe in AppData.", true);
+                ShowError("Missing orbis-pub-cmd.exe in AppData. Reinstall or restore the AppData tools folder.", true);
                 return;
             }
 
@@ -492,8 +497,10 @@ namespace PS4PKGTool
             btnClearTrophyCache.Enabled = false;
             btnCancelTrophyCache.Enabled = true;
             btnSaveClose.Enabled = false;
-            lblTrophyCacheStatus.Text = "Scanning configured PKG directories...";
+            pbTrophyCacheProgress.Visible = true;
             pbTrophyCacheProgress.Value = 0;
+            pbTrophyCacheProgress.Maximum = 1;
+            lblTrophyCacheStatus.Text = "Scanning configured PKG directories...";
 
             var progress = new Progress<TrophyCacheProgress>(value =>
             {
@@ -517,10 +524,13 @@ namespace PS4PKGTool
                     progress,
                     trophyCacheCancellation.Token);
 
-                string summary = $"PKGs: {result.TotalPackages} | Added: {result.Added} | Cached: {result.AlreadyCached} | " +
+                string summary = $"PKGs: {result.TotalPackages} | Added: {result.Added} | Already cached: {result.AlreadyCached} | " +
                     $"No trophies: {result.WithoutTrophies} | Duplicates: {result.DuplicateContentIds} | Failed: {result.Failed}";
-                lblTrophyCacheStatus.Text = (result.Cancelled ? "Cancelled. " : "Complete. ") + summary;
-                Logger.LogInformation("Trophy metadata cache: " + lblTrophyCacheStatus.Text);
+                lblTrophyCacheStatus.Text = (result.Cancelled ? "Cancelled. " : "Complete. ") + summary +
+                    (result.Added + result.AlreadyCached > 0
+                        ? "\nSelect a game in the main window and open the Trophy tab to see names."
+                        : string.Empty);
+                Logger.LogInformation("Trophy metadata cache: " + summary);
                 foreach (string error in result.Errors)
                     Logger.LogWarning("Trophy cache: " + error);
 
@@ -539,17 +549,21 @@ namespace PS4PKGTool
                 btnClearTrophyCache.Enabled = true;
                 btnCancelTrophyCache.Enabled = false;
                 btnSaveClose.Enabled = true;
+                pbTrophyCacheProgress.Visible = false;
             }
         }
 
         private void btnCancelTrophyCache_Click(object sender, EventArgs e)
         {
+            if (btnBuildTrophyCache.Enabled)
+                return;
             trophyCacheCancellation?.Cancel();
+            lblTrophyCacheStatus.Text = "Cancelling...";
         }
 
         private void btnClearTrophyCache_Click(object sender, EventArgs e)
         {
-            if (DialogResultYesNo("Clear every cached NP Communication ID?") != DialogResult.Yes)
+            if (DialogResultYesNo("Clear every cached NP Communication ID?\n\nTrophy names will need to be decrypted again after the next cache build.") != DialogResult.Yes)
                 return;
             try
             {
@@ -568,7 +582,19 @@ namespace PS4PKGTool
             try
             {
                 int count = new NpCommunicationIdCache(TrophyCachePath).Count;
-                lblTrophyCacheStatus.Text = $"Cached NP Communication IDs: {count}";
+                int directoryCount = lbPkgDirectoryList.Items.Count;
+                if (count == 0)
+                {
+                    lblTrophyCacheStatus.Text = directoryCount == 0
+                        ? "Cache empty. Add PKG folders on the General tab, then click Build."
+                        : $"Cache empty ({directoryCount} PKG folder{(directoryCount == 1 ? "" : "s")} configured). Click Build to scan them.";
+                }
+                else
+                {
+                    lblTrophyCacheStatus.Text =
+                        $"Cached NP Communication IDs: {count}\n" +
+                        "Trophy names will load automatically when you select a game.";
+                }
             }
             catch (Exception ex)
             {

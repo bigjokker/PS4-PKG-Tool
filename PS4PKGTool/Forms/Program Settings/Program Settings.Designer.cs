@@ -1045,7 +1045,7 @@ namespace PS4PKGTool
             grpTrophyCache.Location = new System.Drawing.Point(12, 16);
             grpTrophyCache.Name = "grpTrophyCache";
             grpTrophyCache.SectionHeader = "Trophy Metadata Cache";
-            grpTrophyCache.Size = new System.Drawing.Size(606, 205);
+            grpTrophyCache.Size = new System.Drawing.Size(606, 280);
             grpTrophyCache.TabIndex = 0;
             // 
             // lblTrophyCacheDesc
@@ -1054,14 +1054,14 @@ namespace PS4PKGTool
             lblTrophyCacheDesc.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
             lblTrophyCacheDesc.Location = new System.Drawing.Point(15, 32);
             lblTrophyCacheDesc.Name = "lblTrophyCacheDesc";
-            lblTrophyCacheDesc.Size = new System.Drawing.Size(575, 38);
+            lblTrophyCacheDesc.Size = new System.Drawing.Size(575, 72);
             lblTrophyCacheDesc.TabIndex = 0;
-            lblTrophyCacheDesc.Text = "Extract NP Communication IDs from PKGs in the configured directories.\r\nCached IDs enable full trophy names and descriptions when a PKG is selected.";
+            lblTrophyCacheDesc.Text = "Trophy names are encrypted. This cache stores each game's NP Communication ID so names and descriptions can decrypt.\r\n\r\n1. On the General tab, add your PKG folder(s).\r\n2. Click Build below to scan those folders once.\r\n3. Select a game in the main window and open the Trophy tab.";
             // 
             // btnBuildTrophyCache
             // 
             btnBuildTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnBuildTrophyCache.Location = new System.Drawing.Point(15, 78);
+            btnBuildTrophyCache.Location = new System.Drawing.Point(15, 112);
             btnBuildTrophyCache.Name = "btnBuildTrophyCache";
             btnBuildTrophyCache.Size = new System.Drawing.Size(210, 30);
             btnBuildTrophyCache.TabIndex = 1;
@@ -1070,8 +1070,9 @@ namespace PS4PKGTool
             // 
             // btnCancelTrophyCache
             // 
+            btnCancelTrophyCache.Enabled = false;
             btnCancelTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnCancelTrophyCache.Location = new System.Drawing.Point(235, 78);
+            btnCancelTrophyCache.Location = new System.Drawing.Point(235, 112);
             btnCancelTrophyCache.Name = "btnCancelTrophyCache";
             btnCancelTrophyCache.Size = new System.Drawing.Size(105, 30);
             btnCancelTrophyCache.TabIndex = 2;
@@ -1081,7 +1082,7 @@ namespace PS4PKGTool
             // btnClearTrophyCache
             // 
             btnClearTrophyCache.Font = new System.Drawing.Font("Segoe UI", 9F);
-            btnClearTrophyCache.Location = new System.Drawing.Point(350, 78);
+            btnClearTrophyCache.Location = new System.Drawing.Point(350, 112);
             btnClearTrophyCache.Name = "btnClearTrophyCache";
             btnClearTrophyCache.Size = new System.Drawing.Size(120, 30);
             btnClearTrophyCache.TabIndex = 3;
@@ -1090,19 +1091,21 @@ namespace PS4PKGTool
             // 
             // pbTrophyCacheProgress
             // 
-            pbTrophyCacheProgress.Location = new System.Drawing.Point(15, 120);
+            pbTrophyCacheProgress.Location = new System.Drawing.Point(15, 156);
             pbTrophyCacheProgress.Maximum = 1;
             pbTrophyCacheProgress.Name = "pbTrophyCacheProgress";
             pbTrophyCacheProgress.Size = new System.Drawing.Size(575, 20);
+            pbTrophyCacheProgress.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
             pbTrophyCacheProgress.TabIndex = 4;
+            pbTrophyCacheProgress.Visible = false;
             // 
             // lblTrophyCacheStatus
             // 
             lblTrophyCacheStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
             lblTrophyCacheStatus.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            lblTrophyCacheStatus.Location = new System.Drawing.Point(15, 150);
+            lblTrophyCacheStatus.Location = new System.Drawing.Point(15, 186);
             lblTrophyCacheStatus.Name = "lblTrophyCacheStatus";
-            lblTrophyCacheStatus.Size = new System.Drawing.Size(575, 42);
+            lblTrophyCacheStatus.Size = new System.Drawing.Size(575, 72);
             lblTrophyCacheStatus.TabIndex = 5;
             lblTrophyCacheStatus.Text = "Cache not checked.";
             // 

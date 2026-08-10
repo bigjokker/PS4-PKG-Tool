@@ -967,6 +967,13 @@ namespace PS4PKGTool
                     npCommunicationId = cachedId;
                     Logger.LogInformation("Using cached NP Communication ID for " + pkg.Content_ID + ": " + cachedId);
                 }
+                else
+                {
+                    // Resolve on demand so names work without a pre-built settings cache.
+                    npCommunicationId = await TryResolveNpCommunicationIdAsync(pkgPath, pkg.Content_ID, cache)
+                        .ConfigureAwait(true);
+                    if (loadVersion != _trophyLoadVersion) return;
+                }
 
                 TRPReader legacyReader = null;
                 TrophyMetadataResult result = await Task.Run(() =>
@@ -984,6 +991,56 @@ namespace PS4PKGTool
             catch (Exception ex)
             {
                 Logger.LogError("Error in LoadTrophyInfo", ex);
+            }
+        }
+
+        /// <summary>
+        /// Extracts Sc0/npbind.dat from the PKG when the Content ID is not in the trophy cache.
+        /// Stores a successful result so later selections skip extraction.
+        /// </summary>
+        private async Task<string> TryResolveNpCommunicationIdAsync(
+            string pkgPath,
+            string contentId,
+            NpCommunicationIdCache cache)
+        {
+            if (string.IsNullOrWhiteSpace(pkgPath) || !File.Exists(pkgPath))
+                return null;
+            if (!File.Exists(OrbisPubCmd))
+            {
+                Logger.LogWarning("Cannot resolve NP Communication ID: orbis-pub-cmd.exe was not found.");
+                return null;
+            }
+
+            try
+            {
+                Logger.LogInformation("Extracting NP Communication ID from PKG for " + contentId + "...");
+                string temporaryRoot = Path.Combine(AppDataDirectory, "TrophyMetadata", "Temp");
+                var extractor = new NpbindExtractor();
+                NpbindExtractionResult extraction = await extractor.ExtractAsync(
+                    OrbisPubCmd, pkgPath, temporaryRoot).ConfigureAwait(false);
+
+                if (!extraction.Succeeded || extraction.NpCommunicationId == null)
+                {
+                    Logger.LogWarning("NP Communication ID extraction failed for " + contentId + ": " + extraction.ErrorMessage);
+                    return null;
+                }
+
+                try
+                {
+                    cache.Set(contentId, extraction.NpCommunicationId);
+                    Logger.LogInformation("Cached NP Communication ID for " + contentId + ": " + extraction.NpCommunicationId);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning("NP Communication ID was resolved but could not be cached: " + ex.Message);
+                }
+
+                return extraction.NpCommunicationId;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("NP Communication ID extraction failed for " + contentId + ": " + ex.Message);
+                return null;
             }
         }
 
