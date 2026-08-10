@@ -297,6 +297,26 @@ namespace PS4PKGTool
         private static void SafeMoveFile(string src, string dst) => OrbisTempSafety.SafeMoveFile(src, dst);
 
         /// <summary>
+        /// After cancel/fail, remove the title extract folder if it has no files
+        /// (avoids leaving an empty "Game Title" directory).
+        /// </summary>
+        private static void TryRemoveEmptyExtractFolder(string dir)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) return;
+                if (Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).Any())
+                    return; // partial extract — leave it
+                Directory.Delete(dir, recursive: true);
+                Logger.LogInformation("Removed empty extract folder after cancel/fail: " + dir);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning("Could not remove empty extract folder: " + ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Wait for orbis-pub-cmd without a hard 10-minute kill (issue #76).
         /// Polls every second for cancel; optional progress callback for UI status.
         /// </summary>
@@ -5238,6 +5258,7 @@ namespace PS4PKGTool
                             if (userCancelled)
                             {
                                 e.Cancel = true; // RunWorkerCompleted → "Extraction cancelled."
+                                TryRemoveEmptyExtractFolder(extractLocation);
                             }
                             else if (exitCode != 0)
                             {
@@ -5245,12 +5266,14 @@ namespace PS4PKGTool
                                 if (_extractionStopRequested || _extractWorker.CancellationPending)
                                 {
                                     e.Cancel = true;
+                                    TryRemoveEmptyExtractFolder(extractLocation);
                                 }
                                 else
                                 {
                                     string errMsg = FormatOrbisError(extractOutput);
                                     Logger.LogError($"orbis-pub-cmd exit code: {exitCode}, cancelPending={_extractWorker.CancellationPending}\n{errMsg}");
                                     this.Invoke(() => ShowError($"orbis-pub-cmd error:\n{errMsg}", true));
+                                    TryRemoveEmptyExtractFolder(extractLocation);
                                 }
                             }
                             else
@@ -5275,7 +5298,12 @@ namespace PS4PKGTool
                                             SafeMoveFile(entry, dest);
                                     }
                                 }
-                                if (!e.Cancel)
+                                if (e.Cancel)
+                                {
+                                    // Stopped while moving — drop the title folder only if nothing useful was written
+                                    TryRemoveEmptyExtractFolder(extractLocation);
+                                }
+                                else
                                 {
                                     Logger.LogInformation($"PKG extracted to \"{extractLocation}\".");
                                     this.Invoke(() => ShowInformation($"PKG extracted.", false));
