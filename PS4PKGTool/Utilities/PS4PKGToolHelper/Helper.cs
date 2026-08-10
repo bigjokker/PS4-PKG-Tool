@@ -25,6 +25,7 @@ using PS4PKGTool.Util;
 using System.Reflection;
 using System.Net.Http;
 using DarkUI.Controls;
+using PS4PKGTool;
 
 namespace PS4PKGTool.Utilities.PS4PKGToolHelper
 {
@@ -56,14 +57,81 @@ namespace PS4PKGTool.Utilities.PS4PKGToolHelper
         public static string AppDataDirectory = AppContext.BaseDirectory + @"AppData\";
 
         /// <summary>
+        /// Returns a writable root path that is fully ASCII. orbis-pub-cmd rejects any
+        /// non-ASCII character in in_path/out_path (fullwidth ＆, Japanese titles, and
+        /// even %TEMP% under a non-ASCII Windows username all fail with
+        /// "in_path or out_path is invalid").
+        /// When <paramref name="preferredVolumePath"/> is set, same-volume roots are
+        /// preferred so large PKG File.Move stays on one drive.
+        /// </summary>
+        public static string GetAsciiTempRoot(string preferredVolumePath = null)
+        {
+            string preferredRoot = null;
+            if (!string.IsNullOrEmpty(preferredVolumePath))
+            {
+                try { preferredRoot = Path.GetPathRoot(Path.GetFullPath(preferredVolumePath)); }
+                catch { preferredRoot = Path.GetPathRoot(preferredVolumePath); }
+            }
+
+            var candidates = new List<string>();
+            void Add(string path)
+            {
+                if (string.IsNullOrWhiteSpace(path)) return;
+                try { path = Path.GetFullPath(path); } catch { return; }
+                if (!path.IsAsciiPath()) return;
+                if (!candidates.Contains(path, StringComparer.OrdinalIgnoreCase))
+                    candidates.Add(path);
+            }
+
+            Add(Path.GetTempPath());
+            Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PS4PKGTool", "tmp"));
+            string windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            if (!string.IsNullOrEmpty(windows))
+                Add(Path.Combine(windows, "Temp"));
+            string sysRoot = Path.GetPathRoot(Environment.SystemDirectory);
+            if (!string.IsNullOrEmpty(sysRoot))
+                Add(Path.Combine(sysRoot, "p4t_tmp"));
+            if (!string.IsNullOrEmpty(preferredRoot))
+                Add(Path.Combine(preferredRoot, "p4t_tmp"));
+
+            IEnumerable<string> ordered = candidates;
+            if (!string.IsNullOrEmpty(preferredRoot))
+            {
+                ordered = candidates
+                    .Where(c => c.StartsWith(preferredRoot, StringComparison.OrdinalIgnoreCase))
+                    .Concat(candidates.Where(c => !c.StartsWith(preferredRoot, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            foreach (string root in ordered)
+            {
+                try
+                {
+                    Directory.CreateDirectory(root);
+                    // Prove the directory is writable
+                    string probe = Path.Combine(root, "p4t_w_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+                    Directory.CreateDirectory(probe);
+                    Directory.Delete(probe);
+                    return root;
+                }
+                catch { }
+            }
+
+            // Last resort — may still be non-ASCII on some machines; callers will surface orbis errors.
+            string fallback = Path.GetTempPath();
+            Directory.CreateDirectory(fallback);
+            return fallback;
+        }
+
+        /// <summary>
         /// Creates a short ASCII temp directory for orbis-pub-cmd working files.
-        /// The system temp root plus a short name keeps paths under MAX_PATH even for
-        /// games with deep internal structures (e.g. Ultrawings' StreamingAssets schemas).
+        /// Avoids Path.GetTempPath() when it contains non-ASCII characters (common with
+        /// non-English Windows usernames). Short names also keep deep PKG trees under MAX_PATH.
         /// The caller must delete the returned directory when done.
         /// </summary>
         public static string CreateOrbisTempDir(string tag)
         {
-            string dir = Path.Combine(Path.GetTempPath(), "p4t_" + tag + "_" + Guid.NewGuid().ToString("N").Substring(0, 6));
+            string root = GetAsciiTempRoot();
+            string dir = Path.Combine(root, "p4t_" + tag + "_" + Guid.NewGuid().ToString("N").Substring(0, 6));
             Directory.CreateDirectory(dir);
             return dir;
         }
